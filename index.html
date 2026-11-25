@@ -1,0 +1,1462 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F8FAFC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Planer izleta">
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Globalni%20planer%20izleta%22%2C%22short_name%22%3A%22Planer%20izleta%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23F8FAFC%22%2C%22theme_color%22%3A%22%234338CA%22%7D">
+<title>Globalni planer izleta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  colors: { bg:'var(--bg)', card:'var(--card)', line:'var(--line)', ink:'var(--ink)', muted:'var(--muted)', soft:'var(--soft)',
+    brand:'var(--brand)', brandsoft:'var(--brand-soft)', onbrand:'var(--on-brand)', warn:'var(--warn)', warnsoft:'var(--warn-soft)',
+    danger:'var(--danger)', dangersoft:'var(--danger-soft)' },
+  fontFamily: { sans:['Manrope','ui-sans-serif','system-ui','-apple-system','Segoe UI','Roboto','Helvetica','Arial','sans-serif'] }
+} } };
+</script>
+<style>
+:root{--bg:#F8FAFC;--card:#FFFFFF;--line:#E2E8F0;--ink:#0F172A;--muted:#64748B;--soft:#F1F5F9;--brand:#4338CA;--brand-soft:#EEF2FF;--on-brand:#FFFFFF;--warn:#B45309;--warn-soft:#FEF3C7;--danger:#DC2626;--danger-soft:#FEE2E2;--shadow:0 1px 2px rgba(15,23,42,.04),0 6px 18px rgba(15,23,42,.05);color-scheme:light;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1220;--card:#111A2E;--line:#24324D;--ink:#E8EDF6;--muted:#97A4BA;--soft:#18233A;--brand:#8B93FF;--brand-soft:#1E2452;--on-brand:#0B1220;--warn:#FBBF24;--warn-soft:rgba(251,191,36,.14);--danger:#F87171;--danger-soft:rgba(248,113,113,.15);--shadow:0 1px 2px rgba(0,0,0,.35);color-scheme:dark;}}
+:root[data-theme="dark"]{--bg:#0B1220;--card:#111A2E;--line:#24324D;--ink:#E8EDF6;--muted:#97A4BA;--soft:#18233A;--brand:#8B93FF;--brand-soft:#1E2452;--on-brand:#0B1220;--warn:#FBBF24;--warn-soft:rgba(251,191,36,.14);--danger:#F87171;--danger-soft:rgba(248,113,113,.15);--shadow:0 1px 2px rgba(0,0,0,.35);color-scheme:dark;}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 80px);}
+html,body{background:var(--bg);color:var(--ink);}
+body{margin:0;font-family:Manrope,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--card);}
+*,*::before,*::after{box-sizing:border-box;}
+.shadow-card{box-shadow:var(--shadow);}
+.tnum{font-variant-numeric:tabular-nums;}
+.pop{animation:pop .2s ease-out;}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.sheet-in{animation:sheet .22s cubic-bezier(.2,.8,.2,1);}
+@keyframes sheet{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important;}}
+#print-area{display:none;}
+@media print{body *{visibility:hidden;}#print-area,#print-area *{visibility:visible;}#print-area{display:block;position:absolute;left:0;top:0;white-space:pre-wrap;font:12px/1.55 Manrope,system-ui,sans-serif;color:#000;padding:24px;}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script>
+(function(){
+const { useState, useEffect, useMemo, useCallback } = React;
+const html = htm.bind(React.createElement);
+
+/* ---------- Ikone (Lucide) ---------- */
+const P=d=>['path',{d}],C=(cx,cy,r)=>['circle',{cx,cy,r}],L=(x1,y1,x2,y2)=>['line',{x1,y1,x2,y2}],PL=points=>['polyline',{points}],PG=points=>['polygon',{points}],R=(x,y,width,height,rx)=>['rect',{x,y,width,height,rx}];
+const ICONS={
+ car:[P('M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2'),C(7,17,2),P('M9 17h6'),C(17,17,2)],
+ bus:[P('M8 6v6'),P('M15 6v6'),P('M2 12h19.6'),P('M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3'),C(7,18,2),P('M9 18h5'),C(16,18,2)],
+ walk:[P('M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z'),P('M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z'),P('M16 17h4'),P('M4 13h4')],
+ bike:[C(18.5,17.5,3.5),C(5.5,17.5,3.5),C(15,5,1),P('M12 17.5V14l-3-3 4-3 2 3h2')],
+ utensils:[P('M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2'),P('M7 2v20'),P('M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7')],
+ landmark:[L(3,22,21,22),L(6,18,6,11),L(10,18,10,11),L(14,18,14,11),L(18,18,18,11),PG('12 2 20 7 4 7')],
+ tree:[P('m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 3l4 4.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17Z'),P('M12 22v-3')],
+ coffee:[P('M10 2v2'),P('M14 2v2'),P('M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1'),P('M6 2v2')],
+ book:[P('M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20')],
+ zap:[PG('13 2 3 14 12 14 11 22 21 10 12 10 13 2')],
+ gem:[P('M6 3h12l4 6-10 13L2 9Z'),P('M11 3 8 9l4 13 4-13-3-6'),P('M2 9h20')],
+ bag:[P('M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z'),P('M3 6h18'),P('M16 10a4 4 0 0 1-8 0')],
+ clock:[C(12,12,10),PL('12 6 12 12 16 14')],
+ pin:[P('M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z'),C(12,10,3)],
+ sparkles:[P('m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z'),P('M5 3v4'),P('M19 17v4'),P('M3 5h4'),P('M17 19h4')],
+ chevUp:[P('m18 15-6-6-6 6')],chevDown:[P('m6 9 6 6 6-6')],chevRight:[P('m9 18 6-6-6-6')],
+ arrowUp:[P('m5 12 7-7 7 7'),P('M12 19V5')],arrowDown:[P('M12 5v14'),P('m19 12-7 7-7-7')],
+ grip:[C(9,12,1),C(9,5,1),C(9,19,1),C(15,12,1),C(15,5,1),C(15,19,1)],
+ trash:[P('M3 6h18'),P('M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6'),P('M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'),L(10,11,10,17),L(14,11,14,17)],
+ pencil:[P('M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z'),P('m15 5 4 4')],
+ refresh:[P('M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8'),P('M21 3v5h-5'),P('M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16'),P('M8 16H3v5')],
+ plus:[P('M5 12h14'),P('M12 5v14')],minus:[P('M5 12h14')],x:[P('M18 6 6 18'),P('m6 6 12 12')],
+ undo:[P('M9 14 4 9l5-5'),P('M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11')],
+ redo:[P('m15 14 5-5-5-5'),P('M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13')],
+ share:[C(18,5,3),C(6,12,3),C(18,19,3),L(8.59,13.51,15.42,17.49),L(15.41,6.51,8.59,10.49)],
+ copy:[R(8,8,14,14,2),P('M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2')],
+ printer:[PL('6 9 6 2 18 2 18 9'),P('M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2'),R(6,14,12,8,1)],
+ check:[P('M20 6 9 17l-5-5')],
+ alert:[P('m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z'),P('M12 9v4'),P('M12 17h.01')],
+ bulb:[P('M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5'),P('M9 18h6'),P('M10 22h4')],
+ archive:[R(2,3,20,5,1),P('M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8'),P('M10 12h4')],
+ calendar:[R(3,4,18,18,2),P('M16 2v4'),P('M8 2v4'),P('M3 10h18')],
+ route:[C(6,19,3),P('M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15'),C(18,5,3)],
+ list:[P('m3 17 2 2 4-4'),P('m3 7 2 2 4-4'),P('M13 6h8'),P('M13 12h8'),P('M13 18h8')],
+ activity:[P('M22 12h-4l-3 9L9 3l-3 9H2')],
+ restore:[P('M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'),P('M3 3v5h5')],
+ globe:[C(12,12,10),P('M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'),P('M2 12h20')],
+ sliders:[L(21,4,14,4),L(10,4,3,4),L(21,12,12,12),L(8,12,3,12),L(21,20,16,20),L(12,20,3,20),L(14,2,14,6),L(8,10,8,14),L(16,18,16,22)],
+ eye:[P('M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z'),C(12,12,3)],
+ eyeOff:[P('M9.88 9.88a3 3 0 1 0 4.24 4.24'),P('M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68'),P('M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61'),L(2,2,22,22)],
+ map:[PG('3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21'),L(9,3,9,18),L(15,6,15,21)],
+ message:[P('M7.9 20A9 9 0 1 0 4 16.1L2 22Z')],
+ wallet:[P('M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1'),P('M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4')],
+ send:[P('m22 2-7 20-4-9-9-4Z'),P('M22 2 11 13')],
+ mic:[P('M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z'),P('M19 10v2a7 7 0 0 1-14 0v-2'),L(12,19,12,22)],
+ gear:[C(12,12,3),P('M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z')],
+ nav:[PG('3 11 22 2 13 21 11 13 3 11')],
+ search:[C(11,11,8),P('m21 21-4.3-4.3')],
+ mail:[R(2,4,20,16,2),P('m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7')],
+};
+function Icon({name,size=16,className='',strokeWidth=2}){
+  const parts=ICONS[name]||[];
+  return React.createElement('svg',{width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth,strokeLinecap:'round',strokeLinejoin:'round',className:'shrink-0 '+className,'aria-hidden':'true'},
+    parts.map(([t,a],i)=>React.createElement(t,Object.assign({key:i},a))));
+}
+
+/* ---------- Konstante ---------- */
+const CATS={
+  food:{label:'Gastronomija',icon:'utensils',color:'#EA580C',soft:'rgba(234,88,12,.13)'},
+  sight:{label:'Znamenitost',icon:'landmark',color:'#6366F1',soft:'rgba(99,102,241,.14)'},
+  nature:{label:'Priroda',icon:'tree',color:'#16A34A',soft:'rgba(22,163,74,.14)'},
+  coffee:{label:'Kava / odmor',icon:'coffee',color:'#B7791F',soft:'rgba(183,121,31,.15)'},
+  culture:{label:'Kultura',icon:'book',color:'#0891B2',soft:'rgba(8,145,178,.14)'},
+  activity:{label:'Aktivnost',icon:'zap',color:'#DB2777',soft:'rgba(219,39,119,.13)'},
+};
+const CAT_GROUP={food:['coffee'],coffee:['food'],sight:['culture'],culture:['sight'],nature:['activity'],activity:['nature']};
+const MODES={
+  car:{label:'Automobil',short:'Auto',icon:'car',speed:24,overhead:6,verb:'vožnje autom',k:1.35},
+  transit:{label:'Javni prijevoz / metro',short:'Javni prijevoz',icon:'bus',speed:20,overhead:7,verb:'javnim prijevozom',k:1.3},
+  walk:{label:'Pješice',short:'Pješice',icon:'walk',speed:4.6,overhead:0,verb:'pješice',k:1.25},
+  bike:{label:'Bicikl',short:'Bicikl',icon:'bike',speed:14,overhead:1,verb:'biciklom',k:1.3},
+};
+const FOCUS=[
+  {id:'gastro',label:'Gastronomija',icon:'utensils',cats:['food','coffee']},
+  {id:'history',label:'Povijest i kultura',icon:'landmark',cats:['sight','culture']},
+  {id:'nature',label:'Priroda i vidikovci',icon:'tree',cats:['nature']},
+  {id:'hidden',label:'Skriveni dragulji',icon:'gem',flag:'h'},
+  {id:'relax',label:'Opuštanje',icon:'coffee',cats:['coffee','nature']},
+  {id:'shopping',label:'Shopping',icon:'bag',flag:'s'},
+];
+const QUICK=['Rim','Tokio','Pariz','New York','Barcelona','Beč','Budimpešta','Istanbul','Lisabon','Zagreb'];
+
+/* ---------- Budžet i valute (okvirni tečajevi, 1 EUR = …) ---------- */
+const numFmt=(v,dec)=>{v=Math.max(0,v||0);if(dec==null)dec=(v<20&&Math.abs(v-Math.round(v))>0.04)?2:0;return v.toLocaleString('hr-HR',{minimumFractionDigits:dec,maximumFractionDigits:dec});};
+const CURRENCIES={
+  EUR:{label:'EUR €',sym:'€',rate:1,fmt:v=>numFmt(v)+' €'},
+  USD:{label:'USD $',sym:'$',rate:1.16,fmt:v=>'$'+numFmt(v)},
+  GBP:{label:'GBP £',sym:'£',rate:0.86,fmt:v=>'£'+numFmt(v)},
+  JPY:{label:'JPY ¥',sym:'¥',rate:170,fmt:v=>numFmt(Math.round(v/10)*10,0)+' ¥'},
+  CHF:{label:'CHF',sym:'CHF',rate:0.94,fmt:v=>numFmt(v)+' CHF'},
+};
+const CUR_KEYS=Object.keys(CURRENCIES);
+const money=(eur,cur)=>{const c=CURRENCIES[cur]||CURRENCIES.EUR;return c.fmt((eur||0)*c.rate);};
+const toCur=(eur,cur)=>{const c=CURRENCIES[cur]||CURRENCIES.EUR;const v=(eur||0)*c.rate;return cur==='JPY'?Math.round(v):Math.round(v*100)/100;};
+const fromCur=(val,cur)=>{const n=Number(String(val).replace(',','.'));return n>0?n/(CURRENCIES[cur]||CURRENCIES.EUR).rate:0;};
+const LEVEL={Rim:1,Tokio:0.85,Pariz:1.15,London:1.3,'New York':1.45,Barcelona:0.95,Istanbul:0.6,Kyoto:0.85,'Beč':1.05,Prag:0.7,Lisabon:0.8,Zagreb:0.75,'Budimpešta':0.65};
+const FARE={Rim:1.5,Tokio:1.3,Pariz:2.5,London:3.3,'New York':2.7,Barcelona:1.3,Istanbul:0.6,Kyoto:1.4,'Beč':2.4,Prag:1.2,Lisabon:1.9,Zagreb:0.6,'Budimpešta':1.2};
+const COST_OVERRIDE={'Koloseum':18,'Rimski forum i Palatin':0,'Panteon':5,'Vatikanski muzeji i Sikstinska kapela':25,'Bazilika sv. Petra':0,'Park Villa Borghese':0,'Gelato na Piazzi Navona':4,
+'Tokyo Skytree':20,'teamLab Planets':22,'Vrt Shinjuku Gyoen':3,'Istočni vrtovi Carske palače':0,'Svetište Meiji Jingū':0,'Hram Sensō-ji':0,'Ulica Takeshita':0,'Akihabara':0,
+'Eiffelov toranj':30,'Louvre':22,'Katedrala Notre-Dame':0,'Sainte-Chapelle':13,'Musée d’Orsay':16,'Krstarenje Seinom':17,'Montmartre i Sacré-Cœur':0,'Terasa Galeries Lafayette':0,
+'Westminsterska opatija':35,'Britanski muzej':0,'Tower i Tower Bridge':40,'Tate Modern':0,'Sky Garden':0,'Afternoon tea':70,'Covent Garden':0,'Camden Market':0,
+'Metropolitan Museum of Art':28,'Kip slobode i Ellis Island':23,'Top of the Rock':40,'Memorijal 11. rujna':30,'Šetnja Brooklynskim mostom':0,
+'Sagrada Família':26,'Park Güell':18,'Casa Batlló':35,'Picassov muzej':15,'Montjuïc':10,'Passeig de Gràcia':0,
+'Aja Sofija':25,'Palača Topkapı':40,'Bazilikina cisterna':25,'Krstarenje Bosporom':3,'Veliki bazar':0,'Ulica İstiklal':0,'Galatska kula':28,
+'Kinkaku-ji – Zlatni paviljon':3,'Kiyomizu-dera':3,'Ginkaku-ji – Srebrni paviljon':3,'Vrt kamena Ryōan-ji':4,'Čajna ceremonija':30,'Fushimi Inari':0,
+'Hofburg i Muzej Sisi':20,'Palača Schönbrunn':30,'Muzej povijesti umjetnosti':23,'Belvedere':18,'Prater i Divovski kotač':15,'Bečka državna opera':15,'Kavana Sacher':14,'Figlmüller – bečki odrezak':28,
+'Praški dvorac i katedrala sv. Vida':18,'Židovska četvrt Josefov':22,'Krstarenje Vltavom':20,'Václavské náměstí':0,
+'Tramvaj 28':3,'Alfama i dvorac São Jorge':15,'Belém – toranj i samostan Jerónimos':18,'Pastéis de Belém':4,'Fado večer u Alfami':35,'Nacionalni muzej azulejosa':8,'Elevador de Santa Justa':6,'LX Factory':0,
+'Muzej prekinutih veza':9,'Uspinjača':1,'Groblje Mirogoj':0,
+'Parlament':16,'Budimski dvorac i Matijina crkva':8,'Ribarski bastion':4,'Termalno kupalište Széchenyi':35,'Velika sinagoga u ulici Dohány':25,'Bazilika sv. Stjepana':6,'Krstarenje Dunavom':15,'Kavana New York':25,'Cipele na obali Dunava':0,'Ruševni barovi – Szimpla Kert':12,'Andrássy út i Trg heroja':0};
+
+/* ---------- Baza znanja: [naziv, kategorija, min, kvart, x km, y km, opis, savjet, oznake(h=skriveno, s=shopping, e=večer)] ---------- */
+const EU_PLUG='Utičnice su iste kao kod nas – adapter ne treba';
+const CITIES=[
+{name:'Rim',keys:['rim','rome','roma'],cur:'euro (EUR)',plug:EU_PLUG,transit:'Beskontaktna kartica radi na ulazu u metro i autobuse',extra:['U crkve se ulazi pokrivenih ramena i koljena','Voda iz gradskih česmi nasoni je pitka'],places:[
+['Koloseum','sight',75,'Monti',0.9,-0.9,'Najveći antički amfiteatar na svijetu, dovršen 80. godine.','Ulaznice su s terminom – kupi ih online nekoliko dana ranije.',''],
+['Rimski forum i Palatin','sight',90,'Campitelli',0.4,-0.5,'Ruševine hramova, bazilika i carskih palača u srcu antičkog Rima.','Ista ulaznica vrijedi za Koloseum, Forum i Palatin.',''],
+['Panteon','sight',30,'Centro Storico',-0.7,0.4,'Hram iz 2. stoljeća s golemom betonskom kupolom i otvorom na vrhu.','Najmanje je gužve odmah nakon otvaranja.',''],
+['Fontana di Trevi','sight',20,'Trevi',0.1,0.6,'Najpoznatija barokna fontana u gradu.','Za fotografiju bez gužve dođi prije 8 h ili kasno navečer.','e'],
+['Ručak u trattoriji u Trastevereu','food',75,'Trastevere',-1.1,-0.9,'Kvart popločanih uličica i obiteljskih trattorija.','Naruči cacio e pepe ili carbonaru.',''],
+['Gelato na Piazzi Navona','coffee',30,'Parione',-1.0,0.5,'Barokni trg s Berninijevom Fontanom četiriju rijeka.','Pravi gelato čuva se u metalnim posudama, a ne u visokim šarenim kupovima.',''],
+['Vatikanski muzeji i Sikstinska kapela','culture',150,'Vatikan',-2.6,1.2,'Papinske zbirke i Michelangelove freske na stropu Sikstinske kapele.','Nedjeljom su zatvoreni, osim posljednje nedjelje u mjesecu.',''],
+['Bazilika sv. Petra','sight',60,'Vatikan',-2.9,0.8,'Najveća crkva na svijetu s Michelangelovom kupolom.','Ramena i koljena moraju biti pokriveni.',''],
+['Vidikovac Gianicolo','nature',30,'Gianicolo',-1.8,-0.3,'Brdo s jednim od najljepših pogleda na rimske krovove i kupole.','Svaki dan u podne ovdje se ispaljuje top.','e'],
+['Park Villa Borghese','nature',60,'Pinciano',0.6,2.2,'Najpoznatiji rimski park s jezercem i terasom Pincio.','Za Galeriju Borghese u parku rezervacija je obavezna.',''],
+['Ključanica na Aventinu','sight',20,'Aventino',-0.6,-1.6,'Kroz ključanicu vrata Malteškog reda vidi se savršeno uokvirena kupola sv. Petra.','Spoji posjet s obližnjim Vrtom naranči.','h'],
+['Vintage dućani u kvartu Monti','activity',60,'Monti',0.8,0.0,'Boemski kvart s malim butikama, vintage dućanima i barovima.','Vikendom se održava sajam Mercato Monti.','hs'],
+['Tržnica Campo de’ Fiori','food',30,'Parione',-0.9,0.0,'Jutarnja tržnica voća, začina i lokalnih delicija.','Tržnica radi ujutro; poslijepodne trg postaje mjesto za aperitiv.',''],
+]},
+{name:'Tokio',keys:['tokio','tokyo'],cur:'jen (JPY)',plug:'Utičnice tipa A, 100 V – ponesi adapter',transit:'Kartica Suica ili PASMO za vlakove i metro',extra:['Napojnice se ne daju','Mnogi mali lokali primaju samo gotovinu'],places:[
+['Hram Sensō-ji','sight',60,'Asakusa',2.2,4.8,'Najstariji budistički hram u Tokiju s trgovačkom ulicom Nakamise.','Navečer je hram osvijetljen i znatno je manje gužve.',''],
+['Raskrižje Shibuya','sight',30,'Shibuya',-6.5,-4.5,'Najpoznatiji pješački prijelaz na svijetu.','Za pogled odozgo rezerviraj ulaz na vidikovac Shibuya Sky.','e'],
+['Svetište Meiji Jingū','sight',50,'Harajuku',-6.8,-2.0,'Šintoističko svetište skriveno u gustoj gradskoj šumi.','Pri ulasku se nakloni ispod velikih drvenih vrata torii.',''],
+['Vanjska tržnica Tsukiji','food',60,'Tsukiji',0.5,-1.5,'Štandovi sa sušijem, tamagoyakijem i svježim plodovima mora.','Dođi ujutro – mnogi štandovi zatvaraju rano poslijepodne.',''],
+['Ulica Takeshita','activity',45,'Harajuku',-6.7,-1.6,'Središte tokijske ulične mode, krep palačinki i šarenih dućana.','Vikendom je izrazito gužva – bolje dođi radnim danom.','s'],
+['Omoide Yokochō','food',60,'Shinjuku',-7.8,0.3,'Uska uličica sićušnih barova s yakitorijem i ramenom.','Mnogi barovi primaju samo gotovinu.','e'],
+['Vrt Shinjuku Gyoen','nature',60,'Shinjuku',-6.5,-0.5,'Prostrani vrt s japanskim, francuskim i engleskim dijelom.','Ulaz se plaća; provjeri dane zatvaranja.',''],
+['Tokyo Skytree','activity',60,'Oshiage',3.6,4.2,'Toranj visok 634 m s vidikovcima na 350 i 450 metara.','Za vedrog dana vidi se i planina Fuji.','e'],
+['teamLab Planets','culture',90,'Toyosu',2.5,-3.5,'Muzej digitalne umjetnosti kroz koji se hoda bosonog.','Ulaznice se rasprodaju – kupi ih unaprijed.',''],
+['Akihabara','activity',60,'Akihabara',0.9,2.0,'Četvrt elektronike, animea i gaming kulture.','Najveći izbor je u višekatnim robnim kućama uz glavnu ulicu.','s'],
+['Yanaka Ginza','sight',45,'Yanaka',0.0,5.0,'Stari Tokio: drvene kućice, mali hramovi i ulica s domaćim zalogajima.','Probaj menchi-katsu iz neke od mesnica.','h'],
+['Pržionice kave u Kiyosumi-Shirakawi','coffee',40,'Kōtō',2.0,-0.2,'Mirni kvart poznat po pržionicama specijalne kave.','Spoji ga s obližnjim vrtom Kiyosumi Teien.','h'],
+['Istočni vrtovi Carske palače','nature',50,'Chiyoda',-0.6,0.6,'Vrtovi na mjestu nekadašnjeg dvorca Edo.','Ulaz je besplatan; ponedjeljkom i petkom obično su zatvoreni.',''],
+]},
+{name:'Pariz',keys:['pariz','paris'],cur:'euro (EUR)',plug:EU_PLUG,transit:'Kartica Navigo Easy ili karte u aplikaciji Bonjour RATP',extra:['Pazi na džepare u metrou i oko znamenitosti'],places:[
+['Eiffelov toranj','sight',75,'7. arondisman',-4.0,-0.8,'Simbol Pariza visok 330 metara.','Nakon mraka toranj svaki sat pet minuta svjetluca.','e'],
+['Louvre','culture',150,'1. arondisman',-1.0,0.6,'Najposjećeniji muzej na svijetu, dom Mona Lise.','Rezerviraj termin ulaska online.',''],
+['Katedrala Notre-Dame','sight',40,'Île de la Cité',0.1,-0.1,'Gotička katedrala ponovno otvorena u prosincu 2024. nakon obnove.','Ulaz je besplatan, ali se isplati rezervirati termin.',''],
+['Sainte-Chapelle','sight',30,'Île de la Cité',-0.2,0.0,'Gotička kapela s vitrajima visokim 15 metara.','Najljepša je za sunčanog dana.',''],
+['Montmartre i Sacré-Cœur','sight',75,'18. arondisman',0.0,4.0,'Brežuljak umjetnika s bazilikom i pogledom na cijeli grad.','Na vrh te može odvesti i uspinjača.',''],
+['Falafel u ulici Rosiers','food',40,'Le Marais',0.9,0.3,'Najpoznatiji pariški falafel u srcu Le Maraisa.','Red se brzo kreće – uzmi za van i sjedni u obližnji park.',''],
+['Kroasan i kava u Saint-Germainu','coffee',30,'Saint-Germain-des-Prés',-0.8,-0.6,'Kvart povijesnih kavana i knjižara.','Kava za šankom jeftinija je nego za stolom.',''],
+['Musée d’Orsay','culture',120,'7. arondisman',-1.7,0.1,'Impresionisti u nekadašnjoj željezničkoj postaji.','Pogled kroz golemi sat na petom katu je obavezan.',''],
+['Luksemburški vrt','nature',45,'6. arondisman',-0.5,-1.2,'Najljepši pariški park sa zelenim stolicama uz fontanu.','Uzmi stolicu i odmori se uz jezerce.',''],
+['Kanal Saint-Martin','nature',45,'10. arondisman',1.6,2.0,'Željezni mostići i kafići uz kanal, daleko od turističkih gužvi.','Navečer se lokalci okupljaju uz rub kanala.','he'],
+['Ručak u bistrou u Latinskoj četvrti','food',75,'5. arondisman',0.2,-0.7,'Klasična francuska jela, od juhe od luka do pačjeg confita.','Traži dnevni meni – najbolji je omjer cijene i kvalitete.',''],
+['Terasa Galeries Lafayette','activity',45,'9. arondisman',-1.1,2.1,'Robna kuća sa staklenom kupolom i besplatnom krovnom terasom.','S terase se vide Opera i Eiffelov toranj.','s'],
+['Krstarenje Seinom','activity',60,'Pont Neuf',-0.4,0.1,'Grad s vode, ispod povijesnih mostova.','U sumrak je vožnja najljepša.','e'],
+]},
+{name:'London',keys:['london','londra'],cur:'funta (GBP)',plug:'Utičnice tipa G – ponesi adapter',transit:'Beskontaktna kartica ili Oyster za metro i autobuse',extra:['Na pokretnim stubama stoji se desno','Mnogi veliki muzeji imaju besplatan ulaz'],places:[
+['Westminster i Big Ben','sight',30,'Westminster',0.1,-0.8,'Parlament i najpoznatiji toranj sa satom na svijetu.','Najbolji pogled je s Westminsterskog mosta.',''],
+['Westminsterska opatija','sight',60,'Westminster',-0.1,-1.0,'Mjesto krunidbi i kraljevskih vjenčanja.','Nedjeljom je otvorena samo za bogoslužja.',''],
+['Britanski muzej','culture',120,'Bloomsbury',0.4,1.6,'Kamen iz Rosette, egipatske mumije i blago starih civilizacija.','Ulaz je besplatan.',''],
+['Tržnica Borough','food',50,'Southwark',2.7,-0.8,'Najpoznatija londonska tržnica hrane.','Dođi gladan – probaj sendvič s topljenim sirom.',''],
+['Tower i Tower Bridge','sight',90,'Tower Hill',3.8,-0.2,'Srednjovjekovna utvrda s krunskim draguljima i slavni most.','Ulaznica kupljena online jeftinija je.',''],
+['Hyde Park','nature',60,'Westminster',-2.8,-0.4,'Golemi kraljevski park s jezerom Serpentine.','Ljeti možeš unajmiti pedalinu.',''],
+['Covent Garden','activity',45,'Covent Garden',0.3,0.4,'Trg s uličnim izvođačima, tržnicom i dućanima.','Ulični zabavljači nastupaju na zapadnoj strani trga.','s'],
+['Tate Modern','culture',75,'Bankside',1.8,-0.6,'Moderna umjetnost u bivšoj elektrani.','Stalna zbirka je besplatna, a s najvišeg kata pruža se pogled na grad.',''],
+['Afternoon tea','coffee',75,'Mayfair',-1.2,0.0,'Čaj, sendviči i scones s kremom i džemom.','Rezerviraj stol nekoliko dana unaprijed.',''],
+['Sky Garden','nature',40,'City of London',3.1,0.1,'Vrt pod staklenom kupolom na vrhu nebodera.','Ulaz je besplatan, ali je rezervacija obavezna.','e'],
+['Street food u Brick Laneu','food',60,'Shoreditch',4.1,1.2,'Kvart grafita, vintage dućana i curryja.','Nedjeljom je ovdje najživlji sajam.','hs'],
+['Camden Market','activity',60,'Camden',-0.6,3.8,'Alternativna tržnica uz kanal.','Do Camdena vodi lijepa šetnja uz Regent’s Canal.','s'],
+['Šetnja South Bankom','nature',40,'South Bank',1.0,-0.4,'Šetnica uz Temzu od London Eyea do Tower Bridgea.','Ispod mosta Waterloo su štandovi s rabljenim knjigama.','e'],
+]},
+{name:'New York',keys:['new york','newyork','njujork','ny','nyc','manhattan'],cur:'dolar (USD)',plug:'Utičnice tipa A/B, 120 V – ponesi adapter',transit:'OMNY – plaćanje beskontaktnom karticom u metrou',extra:['Napojnica u restoranu iznosi 18–20 %','Za ulazak u SAD potrebna je ESTA'],places:[
+['Central Park','nature',90,'Manhattan',0.8,3.0,'Zelena oaza Manhattana od 341 hektara.','Unajmi bicikl ili čamac na jezeru.',''],
+['Times Square','sight',20,'Midtown',0,0,'Neonski reklamni panoi i trg koji nikad nije prazan.','Navečer je najimpresivniji.','e'],
+['Metropolitan Museum of Art','culture',150,'Upper East Side',2.0,4.0,'Jedan od najvećih muzeja umjetnosti na svijetu.','Krovni vrt ljeti nudi pogled na Central Park.',''],
+['Kip slobode i Ellis Island','sight',180,'Battery Park',-3.5,-9.5,'Trajektom do simbola Amerike i muzeja useljenika.','Karte za trajekt kupi unaprijed na službenoj stranici.',''],
+['Šetnja Brooklynskim mostom','activity',50,'Lower Manhattan',1.8,-6.5,'Pješačka staza preko mosta iz 1883. s pogledom na nebodere.','Hodaj iz Brooklyna prema Manhattanu za najbolji pogled.','e'],
+['High Line','nature',45,'Chelsea',-1.6,-1.5,'Park na nekadašnjoj nadzemnoj pruzi.','Kreni sa sjevera kod Hudson Yardsa i spusti se do Chelsea Marketa.',''],
+['Chelsea Market','food',50,'Chelsea',-1.4,-2.0,'Natkrivena tržnica hrane u staroj tvornici keksa.','Probaj tacose ili sendvič s jastogom.',''],
+['Top of the Rock','sight',50,'Midtown',0.4,0.8,'Vidikovac s najboljim pogledom na Empire State Building.','Ulaznice za termin zalaska sunca najtraženije su.','e'],
+['Pizza u Greenwich Villageu','food',40,'Greenwich Village',-0.6,-3.5,'Klasična njujorška pizza na komad.','Komad se jede presavijen na pola.',''],
+['Memorijal 11. rujna','culture',90,'Financial District',-1.2,-6.0,'Spomen-bazeni i muzej posvećen žrtvama napada 2001.','Memorijal je besplatan, a muzej se plaća.',''],
+['Kava i butici u SoHou','coffee',40,'SoHo',-0.4,-4.6,'Fasade od lijevanog željeza, butici i kafići.','Najljepše ulice su Greene i Mercer.','s'],
+['DUMBO','sight',40,'Brooklyn',2.6,-6.9,'Popločane ulice i slavni kadar mosta Manhattan.','Fotografiraj s ugla ulica Washington i Water.','h'],
+['Bagel na Lower East Sideu','food',30,'Lower East Side',1.0,-4.3,'Tradicionalni bagel s krem sirom i dimljenim lososom.','Naruči „everything” bagel.','h'],
+]},
+{name:'Barcelona',keys:['barcelona'],cur:'euro (EUR)',plug:EU_PLUG,transit:'Karta T-casual za 10 vožnji',extra:['Pazi na džepare na La Rambli i u metrou','Ručak se jede oko 14 h, a večera nakon 21 h'],places:[
+['Sagrada Família','sight',90,'Eixample',1.8,1.3,'Gaudijeva bazilika koja se gradi od 1882.','Ulaznice s terminom kupi online.',''],
+['Park Güell','nature',75,'Gràcia',0.6,3.2,'Gaudijev park s mozaicima i pogledom na grad.','Za monumentalnu zonu potrebna je ulaznica s terminom.',''],
+['Tržnica La Boqueria','food',40,'La Rambla',-0.3,-0.4,'Najpoznatija tržnica u gradu – voće, šunka i tapas barovi.','Najbolji štandovi su u dubini tržnice, a ne na ulazu.',''],
+['Gotička četvrt','sight',60,'Barri Gòtic',0.4,-0.6,'Srednjovjekovne uličice oko katedrale.','Potraži neogotički mostić u ulici Carrer del Bisbe.',''],
+['Casa Batlló','culture',60,'Eixample',0.1,0.6,'Gaudijeva kuća valovitih linija i krova nalik zmaju.','Ujutro je najmanje gužve.',''],
+['Plaža Barceloneta','nature',75,'Barceloneta',1.4,-1.6,'Gradska plaža i šetnica uz more.','Ne ostavljaj stvari bez nadzora na plaži.',''],
+['Tapas u El Bornu','food',75,'El Born',0.9,-0.5,'Mali barovi s tapasima i vermutom.','Večera ovdje rijetko kad počinje prije 21 h.','e'],
+['Vidikovac Bunkers del Carmel','nature',45,'El Carmel',1.4,3.6,'Ostaci protuzračnih bunkera s pogledom od 360°.','Dođi na zalazak sunca i ponesi grickalice.','he'],
+['Montjuïc','activity',90,'Montjuïc',-1.6,-1.6,'Brdo s dvorcem, vrtovima i olimpijskim stadionom.','Gore vozi uspinjača ili žičara iz luke.',''],
+['Picassov muzej','culture',75,'El Born',0.8,-0.4,'Bogata zbirka Picassovih ranih radova u gotičkim palačama.','Ulaznice s terminom kupi online.',''],
+['Kava u kvartu Gràcia','coffee',40,'Gràcia',0.3,2.0,'Mali trgovi i lokalni kafići daleko od turista.','Plaça del Sol je srce kvarta.','h'],
+['Passeig de Gràcia','activity',45,'Eixample',0.2,0.9,'Elegantni bulevar s modernističkim zgradama i trgovinama.','Ovdje su i Casa Batlló i Casa Milà.','s'],
+]},
+{name:'Istanbul',keys:['istanbul','carigrad'],cur:'turska lira (TRY)',plug:EU_PLUG,transit:'Istanbulkart za tramvaj, metro i trajekte',extra:['Za ulazak u džamije ženama treba marama','Cjenkanje na bazarima je uobičajeno'],places:[
+['Aja Sofija','sight',60,'Sultanahmet',0.15,0.05,'Bizantska bazilika iz 6. stoljeća, danas džamija.','Pokrij ramena i koljena; ženama treba marama.',''],
+['Plava džamija','sight',30,'Sultanahmet',-0.2,-0.2,'Džamija sultana Ahmeda sa šest minareta i plavim pločicama.','Za vrijeme molitve zatvorena je za posjetitelje.',''],
+['Palača Topkapı','culture',120,'Sultanahmet',0.5,0.3,'Rezidencija osmanskih sultana s haremom i riznicom.','Utorkom je zatvorena.',''],
+['Bazilikina cisterna','sight',40,'Sultanahmet',0.1,0.1,'Podzemna bizantska cisterna s 336 stupova i glavama Meduze.','Unutra je svježe – ponesi lagan sloj odjeće.',''],
+['Veliki bazar','activity',75,'Beyazıt',-0.9,0.3,'Jedan od najvećih natkrivenih bazara na svijetu.','Nedjeljom je zatvoren.','s'],
+['Egipatski bazar','food',45,'Eminönü',-0.4,0.9,'Bazar začina, lokuma, čaja i sušenog voća.','Traži degustaciju prije kupnje.','s'],
+['Krstarenje Bosporom','activity',90,'Eminönü',-0.3,1.0,'Vožnja brodom između Europe i Azije.','Javni trajekt puno je jeftiniji od turističkih brodova.',''],
+['Balık ekmek kod Galatskog mosta','food',30,'Eminönü',-0.2,1.1,'Sendvič s pečenom ribom ravno s broda.','Uz njega popij sok od turšije.',''],
+['Galatska kula','sight',40,'Beyoğlu',-0.4,1.9,'Srednjovjekovna kula s panoramskim pogledom.','Pri zalasku sunca red je najduži – dođi ranije.','e'],
+['Baklava i turska kava u Karaköyu','coffee',40,'Karaköy',0.1,1.6,'Kvart nekadašnjih skladišta, danas pun kafića.','Tursku kavu ne miješaj – talog ostaje na dnu.',''],
+['Kvart Balat','sight',60,'Fatih',-2.8,2.4,'Šarene kuće, strme ulice i stara židovska i grčka baština.','Najbolje ga je istražiti pješice, bez plana.','h'],
+['Ulica İstiklal','activity',60,'Beyoğlu',0.0,2.8,'Pješačka avenija s nostalgičnim tramvajem.','Skreni u pasaž Çiçek na meze.','s'],
+['Večera u Kadıköyu','food',90,'Kadıköy',3.0,-1.0,'Azijska strana grada s tržnicom i lokalnim tavernama.','Trajektom iz Eminönüa stižeš za 20-ak minuta.','he'],
+]},
+{name:'Kyoto',keys:['kyoto','kjoto'],cur:'jen (JPY)',plug:'Utičnice tipa A, 100 V – ponesi adapter',transit:'Kartica ICOCA ili Suica za autobuse i vlakove',extra:['Autobusi su često puni – razmisli o biciklu','Napojnice se ne daju'],places:[
+['Fushimi Inari','sight',90,'Fushimi',1.0,-5.0,'Tisuće narančastih vrata torii na stazi uz brdo.','Što se više penješ, to je manje ljudi.',''],
+['Kinkaku-ji – Zlatni paviljon','sight',45,'Kita',-3.5,5.0,'Paviljon prekriven zlatnim listićima nad jezercem.','Najljepše je svjetlo u kasno jutro.',''],
+['Bambusova šuma Arashiyama','nature',60,'Arashiyama',-8.5,1.0,'Staza kroz gustu šumu visokog bambusa.','Dođi prije 8 h za šumu bez gužve.',''],
+['Kiyomizu-dera','sight',60,'Higashiyama',1.6,-1.0,'Drveni hram na stupovima nad dolinom.','Siđi kroz uličice Sannenzaka i Ninenzaka.',''],
+['Gion i Hanamikoji','sight',45,'Gion',0.8,0.0,'Tradicionalna četvrt drvenih čajana.','U privatnim uličicama fotografiranje je zabranjeno.','e'],
+['Tržnica Nishiki','food',45,'Nakagyō',-0.3,0.2,'Natkriveni prolaz sa stotinjak štandova kjotske hrane.','Jedenje u hodu nije pristojno – pojedi kod štanda.',''],
+['Filozofska staza','nature',50,'Sakyō',2.5,2.0,'Šetnica uz kanal obrubljena trešnjama.','Spoji je s Ginkaku-jijem na sjevernom kraju.',''],
+['Ginkaku-ji – Srebrni paviljon','sight',40,'Sakyō',2.6,2.8,'Zen hram s vrtom od pijeska i mahovine.','Popni se stazom do vidikovca iznad hrama.',''],
+['Čajna ceremonija','culture',60,'Higashiyama',0.6,-0.4,'Tradicionalna priprema matche uz objašnjenje rituala.','Rezerviraj unaprijed – grupe su male.',''],
+['Večera u Pontochōu','food',75,'Pontochō',0.2,0.1,'Uska uličica restorana uz rijeku Kamo.','Ljeti mnogi restorani imaju terase nad rijekom.','e'],
+['Matcha slastice u Higashiyami','coffee',35,'Higashiyama',1.3,-0.6,'Čajane s matcha sladoledom i mochijem.','Probaj parfait s matchom.',''],
+['Vrt kamena Ryōan-ji','culture',40,'Ukyō',-4.0,4.5,'Najpoznatiji zen vrt s 15 kamenova.','Ni iz jednog kuta ne vide se svih 15 kamenova odjednom.',''],
+['Šuma Tadasu no Mori','nature',45,'Sakyō',0.2,3.3,'Prastara šuma oko svetišta Shimogamo.','Mirna alternativa prepunim hramovima.','h'],
+]},
+{name:'Beč',keys:['bec','wien','vienna','vienne'],cur:'euro (EUR)',plug:EU_PLUG,transit:'Dnevna ili 24-satna karta Wiener Linien',extra:['Nedjeljom je većina trgovina zatvorena'],places:[
+['Katedrala sv. Stjepana','sight',40,'Innere Stadt',0,0,'Gotička katedrala s krovom od šarenih crjepova.','Popni se na južni toranj – 343 stepenice.',''],
+['Hofburg i Muzej Sisi','culture',90,'Innere Stadt',-0.6,-0.1,'Carska palača Habsburgovaca.','Ulaznica Sisi Ticket vrijedi i za Schönbrunn.',''],
+['Palača Schönbrunn','sight',120,'Hietzing',-4.6,-2.3,'Ljetna rezidencija Habsburgovaca s golemim vrtovima.','Popni se do Gloriette za pogled na palaču i grad.',''],
+['Naschmarkt','food',50,'Mariahilf',-0.6,-1.0,'Najpoznatija bečka tržnica s restoranima.','Subotom je uz nju buvljak.',''],
+['Kavana Sacher','coffee',45,'Innere Stadt',-0.3,-0.5,'Originalna Sachertorte u kavani hotela Sacher.','Red je kraći poslijepodne radnim danom.',''],
+['Muzej povijesti umjetnosti','culture',120,'Innere Stadt',-0.9,-0.6,'Bruegel, Rafael i Vermeer u raskošnoj zgradi.','Kafić pod kupolom jedan je od najljepših u gradu.',''],
+['Belvedere','culture',75,'Landstraße',1.1,-1.4,'Barokna palača s Klimtovim Poljupcem.','Najbolji pogled na palaču je iz donjeg vrta.',''],
+['Prater i Divovski kotač','activity',60,'Leopoldstadt',2.5,1.5,'Zabavni park s kotačem iz 1897.','Vožnja kotačem traje oko 15 minuta.','e'],
+['Hundertwasserhaus','sight',25,'Landstraße',1.8,0.0,'Šarena kuća bez ravnih linija.','Preko puta je Hundertwasser Village s kafićem.','h'],
+['Figlmüller – bečki odrezak','food',75,'Innere Stadt',0.2,0.2,'Odrezak veći od tanjura, poslužuje se od 1905.','Rezerviraj stol – bez rezervacije se dugo čeka.',''],
+['Heuriger u Grinzingu','food',90,'Döbling',-2.5,5.5,'Vinske konobe s mladim vinom i domaćom hranom.','Zeleni vijenac iznad vrata znači da je konoba otvorena.','he'],
+['Graben i Kärntner Straße','activity',45,'Innere Stadt',-0.1,-0.2,'Glavne trgovačke ulice u starom gradu.','Svrati u Julius Meinl am Graben, dućan delikatesa.','s'],
+['Bečka državna opera','culture',50,'Innere Stadt',-0.2,-0.6,'Jedna od najvažnijih opernih kuća na svijetu.','Karte za stajanje prodaju se na dan izvedbe po niskoj cijeni.','e'],
+]},
+{name:'Prag',keys:['prag','praha','prague'],cur:'češka kruna (CZK)',plug:EU_PLUG,transit:'Karte u aplikaciji PID Lítačka',extra:['Mjenjačnice u centru često imaju loše tečajeve'],places:[
+['Staromjestski trg i Astronomski sat','sight',30,'Staré Město',0,0,'Gotički trg s astronomskim satom iz 1410.','Figure se pokreću svaki sat od 9 do 23 h.',''],
+['Karlov most','sight',30,'Staré Město',-0.6,-0.1,'Kameni most iz 14. stoljeća s 30 kipova.','Prije 8 h most je gotovo prazan.',''],
+['Praški dvorac i katedrala sv. Vida','sight',120,'Hradčany',-1.6,0.6,'Jedan od najvećih dvorskih kompleksa na svijetu.','Smjena straže je svaki sat, a svečana u podne.',''],
+['Mala Strana','sight',45,'Malá Strana',-1.0,0.0,'Barokna četvrt ispod dvorca.','Skreni u bočne uličice za mirnije kutke.',''],
+['Brdo Petřín','nature',60,'Malá Strana',-1.4,-0.8,'Park s vidikovcem nalik Eiffelovu tornju.','Gore vozi uspinjača, a spusti se pješice kroz voćnjake.','e'],
+['Židovska četvrt Josefov','culture',75,'Josefov',-0.2,0.4,'Sinagoge i staro židovsko groblje.','Subotom su sinagoge zatvorene.',''],
+['Ručak u pivnici','food',75,'Nové Město',0.2,-0.3,'Svíčková, gulaš i knedle uz točeno pivo.','Konobar donosi novo pivo dok ne staviš podmetač na čašu.',''],
+['Kavana Louvre','coffee',40,'Nové Město',0.0,-0.8,'Kavana iz 1902. koju je posjećivao Kafka.','Probaj medovník, tortu od meda.',''],
+['Vyšehrad','nature',60,'Vyšehrad',0.3,-3.2,'Utvrda iznad Vltave s grobljem slavnih Čeha.','Mirna alternativa dvorcu, s pogledom na rijeku.','h'],
+['Zid Johna Lennona','sight',15,'Malá Strana',-0.9,-0.2,'Zid prekriven grafitima i porukama mira.','Odmah do njega je otočić Kampa.','h'],
+['Václavské náměstí','activity',40,'Nové Město',0.6,-0.6,'Bulevar trgovina i mjesto važnih povijesnih događaja.','Pasaž Lucerna krije Černýjev naopaki kip konja.','s'],
+['Krstarenje Vltavom','activity',60,'Staré Město',-0.4,-0.4,'Grad s rijeke uz pogled na dvorac.','Večernje krstarenje uz osvijetljene mostove najljepše je.','e'],
+]},
+{name:'Lisabon',keys:['lisabon','lisboa','lisbon'],cur:'euro (EUR)',plug:EU_PLUG,transit:'Kartica Viva Viagem za metro, tramvaj i dizala',extra:['Kaldrma je skliska – obuj cipele s dobrim potplatom'],places:[
+['Tramvaj 28','activity',45,'Baixa',0.4,0.4,'Žuti tramvaj kroz najstrmije kvartove.','Uđi na početnoj stanici Martim Moniz za sigurno mjesto.',''],
+['Alfama i dvorac São Jorge','sight',90,'Alfama',0.6,0.5,'Najstariji kvart i maurski dvorac iznad grada.','Najljepši je pogled iz dvorišta dvorca.',''],
+['Belém – toranj i samostan Jerónimos','sight',120,'Belém',-6.0,-0.5,'Spomenici doba otkrića u manuelinskom stilu.','Ponedjeljkom su obično zatvoreni.',''],
+['Pastéis de Belém','coffee',30,'Belém',-5.8,-0.3,'Originalni kolači pastéis de nata od 1837.','Pospi ih cimetom i šećerom u prahu.',''],
+['Time Out Market','food',60,'Cais do Sodré',-0.8,-0.2,'Tržnica s kuhinjama poznatih lisabonskih kuhara.','Dođi prije 12 h, prije podnevne gužve.',''],
+['Miradouro da Senhora do Monte','nature',30,'Graça',0.6,1.1,'Najviši vidikovac u gradu.','Idealan je za zalazak sunca.','he'],
+['Fado večer u Alfami','culture',90,'Alfama',0.8,0.3,'Tradicionalna portugalska glazba u malim tavernama.','Tijekom pjesme se ne razgovara.','e'],
+['LX Factory','activity',60,'Alcântara',-3.0,-0.4,'Stara tvornica pretvorena u dućane, knjižaru i restorane.','Nedjeljom se ovdje održava sajam.','s'],
+['Praça do Comércio','sight',20,'Baixa',0,0,'Veličanstveni trg otvoren prema rijeci.','Prođi kroz slavoluk Rua Augusta.',''],
+['Nacionalni muzej azulejosa','culture',60,'Xabregas',2.8,1.3,'Pet stoljeća portugalskih keramičkih pločica.','Ponedjeljkom je zatvoren.','h'],
+['Ručak s bakalarom','food',75,'Alfama',0.7,0.3,'Bacalhau à Brás i druga jela od bakalara.','Predjelo na stolu (kruh, masline) naplaćuje se ako ga pojedeš.',''],
+['Elevador de Santa Justa','sight',20,'Baixa',-0.1,0.4,'Neogotičko dizalo od lijevanog željeza.','Do vidikovca na vrhu možeš doći i pješice iz Chiada.',''],
+['Šetnja do Cais do Sodré','nature',40,'Cais do Sodré',-0.7,-0.2,'Šetnica uz rijeku Tejo.','Na stepenicama Ribeira das Naus lokalci sjede uz rijeku.','e'],
+]},
+{name:'Budimpešta',keys:['budimpesta','budapest','budimpeste'],cur:'forinta (HUF)',plug:EU_PLUG,transit:'Karte u aplikaciji BudapestGO ili 24-satna putna karta',extra:['U termalna kupališta ponesi japanke i kupaći','Kartice se primaju gotovo svugdje, plaćaj u forintama'],places:[
+['Parlament','sight',60,'Lipótváros',-0.4,1.5,'Neogotička zgrada Parlamenta uz Dunav, jedna od najvećih u Europi.','Ulaznice za razgledavanje unutrašnjosti kupi online jer se brzo rasprodaju.',''],
+['Budimski dvorac i Matijina crkva','sight',75,'Várnegyed',-1.3,0.8,'Gotička crkva s krovom od šarenih pločica u srcu dvorske četvrti.','Gore vozi uspinjača s Trga Adama Clarka ili autobus 16.',''],
+['Ribarski bastion','sight',30,'Várnegyed',-1.4,0.9,'Bijele kule s najljepšim pogledom na Parlament.','Donja terasa je besplatna; dođi rano ujutro.',''],
+['Lančani most','sight',20,'Belváros',-0.6,0.3,'Najstariji most preko Dunava u gradu, otvoren 1849.','Navečer je osvijetljen i najljepši za fotografiju.','e'],
+['Termalno kupalište Széchenyi','activity',150,'Városliget',2.8,2.2,'Jedno od najvećih termalnih kupališta u Europi s vanjskim bazenima.','Ponesi japanke i ručnik ili ih unajmi na ulazu.',''],
+['Velika tržnica','food',45,'Fővám tér',0.0,-1.2,'Natkrivena tržnica s paprikom, kobasicama i lángosom.','Na katu se jede lángos; nedjeljom je zatvorena.','s'],
+['Ručak – gulaš i paprikaš','food',75,'Belváros',0.2,-0.3,'Tradicionalna mađarska jela u lokalnom restoranu.','Gulyás je ovdje juha, a ne gusti umak.',''],
+['Ruševni barovi – Szimpla Kert','activity',75,'Erzsébetváros',0.8,0.2,'Barovi u napuštenim zgradama Židovske četvrti.','Nedjeljom ujutro u Szimpli je tržnica domaćih proizvoda.','he'],
+['Velika sinagoga u ulici Dohány','culture',60,'Erzsébetváros',0.6,-0.1,'Najveća sinagoga u Europi s memorijalnim vrtom.','Subotom je zatvorena za posjetitelje.',''],
+['Bazilika sv. Stjepana','sight',40,'Lipótváros',0.0,0.5,'Najveća crkva u gradu s vidikovcem na kupoli.','Na kupolu vodi dizalo ili 364 stepenice.',''],
+['Brdo Gellért i Citadela','nature',60,'Gellérthegy',-0.9,-1.0,'Vidikovac nad Dunavom s pogledom na Budim i Peštu.','Najbolje mjesto u gradu za zalazak sunca.','e'],
+['Kavana New York','coffee',45,'Erzsébetváros',1.5,0.3,'Raskošna kavana iz 1894., često nazivana najljepšom na svijetu.','Red je najkraći rano ujutro.',''],
+['Margitin otok','nature',75,'Margitsziget',-0.6,3.2,'Parkovni otok na Dunavu s glazbenom fontanom i stazom za trčanje.','Na ulazu možeš unajmiti bicikl.','h'],
+['Krstarenje Dunavom','activity',60,'Belváros',-0.4,0.0,'Grad s rijeke uz osvijetljeni Parlament.','Večernje krstarenje je najljepše.','e'],
+['Andrássy út i Trg heroja','sight',45,'Terézváros',2.3,2.0,'Elegantni bulevar pod zaštitom UNESCO-a koji završava Trgom heroja.','Ispod bulevara vozi linija M1, najstariji metro u kontinentalnoj Europi.','s'],
+['Cipele na obali Dunava','culture',15,'Lipótváros',-0.6,1.2,'Spomenik žrtvama Holokausta strijeljanima uz rijeku.','Mjesto je tihog sjećanja.','h'],
+]},
+{name:'Zagreb',keys:['zagreb'],cur:'euro (EUR)',plug:EU_PLUG,transit:'ZET karta u aplikaciji ili na kiosku',extra:['Gornji grad najlakše je obići pješice'],places:[
+['Trg bana Jelačića','sight',15,'Donji grad',0,0,'Središnji trg i najbolje polazište za šetnju.','Dogovor „pod satom” zagrebačka je tradicija.',''],
+['Tržnica Dolac','food',30,'Kaptol',0.05,0.2,'Trbuh Zagreba s crvenim suncobranima.','Najživlje je ujutro; probaj domaći sir i vrhnje.',''],
+['Zagrebačka katedrala','sight',25,'Kaptol',0.3,0.2,'Neogotička katedrala, simbol grada.','Ulaz je besplatan.',''],
+['Tkalčićeva ulica','coffee',40,'Gornji grad',-0.05,0.35,'Ulica kafića na mjestu nekadašnjeg potoka.','Za kavu odaberi neku od mirnijih bočnih terasa.',''],
+['Kamenita vrata','sight',15,'Gornji grad',-0.15,0.4,'Jedina sačuvana vrata starog Gradeca.','Mjesto je tihe molitve – zadrži glas tihim.',''],
+['Markov trg','sight',20,'Gornji grad',-0.25,0.5,'Crkva sv. Marka s krovom od šarenih crjepova.','Oko trga su Sabor i Banski dvori.',''],
+['Kula Lotrščak i Strossmayerovo šetalište','nature',30,'Gornji grad',-0.4,0.3,'Vidikovac nad Donjim gradom.','Top s Lotrščaka puca svaki dan u podne.','e'],
+['Uspinjača','activity',10,'Donji grad',-0.45,0.2,'Jedna od najkraćih uspinjača u javnom prijevozu na svijetu.','Vožnja traje manje od minute.',''],
+['Muzej prekinutih veza','culture',50,'Gornji grad',-0.3,0.45,'Predmeti i priče iz završenih ljubavi.','Nagrađivan i jedinstven muzej u svijetu.',''],
+['Štrukli u La Štruk','food',60,'Gornji grad',0.0,0.3,'Zagorski štrukli u desetak varijanti.','Probaj pečene štrukle sa sirom.',''],
+['Park Zrinjevac','nature',25,'Donji grad',0.2,-0.5,'Park s glazbenim paviljonom i platanama.','Dio je zelene Lenucijeve potkove.',''],
+['Park Maksimir','nature',90,'Maksimir',3.5,0.8,'Najstariji javni park u Zagrebu s jezerima.','U parku je i zoološki vrt.',''],
+['Groblje Mirogoj','culture',60,'Mirogoj',1.5,2.0,'Groblje-park s arkadama i kupolama.','Do Mirogoja vozi autobus s Kaptola.','h'],
+]},
+];
+const GENERIC=[
+['Stari grad – {c}','sight',60,'Stari grad',0.6,'Najstariji dio grada – trgovi, uske ulice i povijesne fasade.','Lokalni turistički ured obično nudi besplatnu kartu i ture.',''],
+['Glavni trg – {c}','sight',25,'Središte',0.3,'Mjesto okupljanja i najbolje polazište za upoznavanje grada.','Pogledaj oglasne ploče – često najavljuju lokalna događanja.',''],
+['Lokalna tržnica – {c}','food',40,'Središte',0.7,'Svježi lokalni proizvodi, sirevi i ulična hrana.','Najživlje je ujutro, prije podneva.',''],
+['Gradski muzej – {c}','culture',60,'Stari grad',0.8,'Povijest i kultura kraja na jednom mjestu.','Provjeri radno vrijeme – mnogi muzeji ponedjeljkom ne rade.',''],
+['Glavno svetište grada','sight',30,'Stari grad',0.6,'Najvažnija vjerska građevina, često i arhitektonski biser.','Ponesi odjeću koja pokriva ramena i koljena.',''],
+['Vidikovac – {c}','nature',40,'Iznad grada',2.0,'Najbolji pogled na krovove i okolicu.','Dođi pred zalazak sunca za najljepše svjetlo.','e'],
+['Gradski park ili botanički vrt','nature',45,'Zeleni pojas',1.6,'Zeleni predah od gradske vreve.','Savršeno mjesto za piknik s namirnicama s tržnice.',''],
+['Šetnica uz vodu','nature',45,'Obala',1.3,'Šetnja uz rijeku, jezero ili more – omiljeno mjesto lokalaca.','Navečer je najživlje.','e'],
+['Kavana u starom dijelu','coffee',30,'Stari grad',0.4,'Kava i lokalni kolači na terasi s pogledom na ulični život.','Pitaj konobara za lokalni specijalitet.',''],
+['Ulična hrana i lokalni zalogaji','food',30,'Središte',0.8,'Brzi lokalni specijaliteti koje jedu i domaći.','Gdje je red domaćih, tu je i najbolja hrana.',''],
+['Restoran s tradicionalnom kuhinjom','food',80,'Stari grad',0.9,'Jela kraja pripremljena po domaćim receptima.','Pitaj za jelo dana – najčešće je i najsvježije.',''],
+['Skrivena dvorišta i uličice','sight',40,'Sporedne ulice',1.0,'Kutci koje turisti obično zaobiđu.','Skreni s glavne ulice i prati uske prolaze.','h'],
+['Kvart lokalnih umjetnika','culture',45,'Kreativni kvart',1.8,'Galerije, ateljei i murali.','Mnoge galerije imaju besplatan ulaz.','h'],
+['Glavna trgovačka ulica','activity',50,'Središte',0.5,'Dućani, butici i lokalni brendovi.','Povoljnije cijene su izvan najužeg centra.','s'],
+['Dućan lokalnih proizvoda','activity',25,'Stari grad',0.5,'Autentični suveniri, rukotvorine i delicije.','Izbjegavaj masovno proizvedene suvenire na glavnom trgu.','s'],
+['Vođena tura ili najam bicikla','activity',90,'Središte',1.2,'Brz način da obiđeš više kvartova i čuješ lokalne priče.','Mnogi gradovi nude besplatne ture uz napojnicu.',''],
+['Večera s pogledom','food',90,'Iznad grada',1.8,'Restoran ili terasa s pogledom za kraj dana.','Rezerviraj stol uz ogradu.','e'],
+['Kavana uz park','coffee',30,'Zeleni pojas',1.4,'Mirno mjesto za predah između dvije znamenitosti.','Dobro mjesto za planiranje ostatka dana.',''],
+];
+
+/* ---------- Pomoćne funkcije ---------- */
+const uid=()=>Math.random().toString(36).slice(2,10);
+const norm=s=>(s||'').toLowerCase().replace(/đ/g,'d').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function rngFrom(seed){let a=seed>>>0;return()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const toMin=t=>{const [h,m]=String(t||'0:0').split(':').map(Number);return (h||0)*60+(m||0);};
+const fmtT=m=>{m=((Math.round(m)%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
+const fmtD=m=>{m=Math.round(m);if(m<60)return m+' min';const h=Math.floor(m/60),r=m%60;return r?h+' h '+r+' min':h+' h';};
+const fmtKm=k=>(k<10?k.toFixed(1):String(Math.round(k))).replace('.',',')+' km';
+const todayIso=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const addDays=(iso,n)=>{const [y,m,d]=String(iso||todayIso()).split('-').map(Number);const dt=new Date(y,(m||1)-1,(d||1)+n);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');};
+const fmtDate=iso=>{if(!iso)return '';const [y,m,d]=iso.split('-').map(Number);return d+'. '+m+'. '+y+'.';};
+const fmtShort=iso=>{const [,m,d]=iso.split('-').map(Number);return d+'. '+m+'.';};
+const hav=(la1,lo1,la2,lo2)=>{const R=6371,r=Math.PI/180,dLa=(la2-la1)*r,dLo=(lo2-lo1)*r;const h=Math.sin(dLa/2)**2+Math.cos(la1*r)*Math.cos(la2*r)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));};
+const hasLL=p=>p&&p.lat!=null&&p.lon!=null&&isFinite(p.lat)&&isFinite(p.lon);
+const dist=(a,b)=>hasLL(a)&&hasLL(b)?hav(a.lat,a.lon,b.lat,b.lon):Math.hypot(((a&&a.x)||0)-((b&&b.x)||0),((a&&a.y)||0)-((b&&b.y)||0));
+const fmtDist=k=>k<1?(Math.max(10,Math.round(k*100)*10))+' m':fmtKm(k);
+const cap=s=>{s=String(s||'').trim().replace(/\s+/g,' ');return s?s.charAt(0).toLocaleUpperCase('hr')+s.slice(1):'';};
+
+function findCity(dest){
+  const n=' '+norm(dest)+' ';if(n.trim()==='')return null;
+  return CITIES.find(c=>c.keys.some(k=>n.includes(' '+k+' ')))||AI[norm(dest)]||null;
+}
+/* ---------- Claude: stvarne lokacije za bilo koje mjesto ---------- */
+const AI_STORE='globalni-planer-ai-gradovi-v1';const AI={};
+try{Object.assign(AI,JSON.parse(localStorage.getItem(AI_STORE)||'{}'));}catch(e){}
+const saveAI=()=>{try{localStorage.setItem(AI_STORE,JSON.stringify(AI));}catch(e){}};
+let samplePromise=null;
+const getSample=()=>{if(!samplePromise){try{samplePromise=(window.claude&&window.claude.use?window.claude.use('sample'):Promise.resolve(null)).catch(()=>null);}catch(e){samplePromise=Promise.resolve(null);}}return samplePromise;};
+const AI_CATS=['food','sight','nature','coffee','culture','activity'];
+const str=(v,max)=>typeof v==='string'?v.trim().slice(0,max):'';
+async function fetchAiCity(dest,signal){
+  const sample=await getSample();if(!sample)throw{code:'unavailable'};
+  const prompt=`You are a meticulous local travel expert. Build a curated list of real places for a trip planner for this destination: "${String(dest).slice(0,80)}".
+Rules:
+- Only include places that really exist and that you are confident about. If you do not recognise the destination, return {"found": false}.
+- Give 14 to 16 places mixing these categories: food (restaurants, markets, local dishes), coffee (cafes, desserts, rest stops), sight (landmarks, squares, churches, bridges), culture (museums, galleries, performances), nature (parks, viewpoints, waterfronts), activity (tours, baths, shopping streets, experiences). Include at least 3 food or coffee places.
+- x and y are approximate distances in kilometres east (x) and north (y) of the main square or city centre, based on real geography.
+- All text values must be in natural, idiomatic Croatian (use Croatian exonyms where they exist, e.g. Beč, Budimpešta, Kopenhagen). Descriptions: one sentence. Tips: one practical insider sentence.
+- cost_eur: typical price per adult in euros (entry ticket; for food and coffee a typical meal or coffee; 0 if free). single_ticket_eur: one public transport ride. meal_eur: typical mid-range main course.
+- "plug": compare with Croatian EU sockets (type C/F, 230 V). If the same, write exactly "Utičnice su iste kao kod nas – adapter ne treba"; otherwise name the type and say to bring an adapter.
+Reply with JSON only, no prose, in this shape:
+{"found": true, "name": "Croatian name of the place", "currency": "e.g. forinta (HUF)", "plug": "...", "transit": "best public transport ticket or card, one short sentence", "single_ticket_eur": 2.0, "meal_eur": 18, "tips": ["2-3 short practical travel tips"], "places": [{"name": "...", "category": "food|coffee|sight|culture|nature|activity", "minutes": 45, "district": "neighbourhood name", "x": 0.4, "y": -0.2, "description": "...", "tip": "...", "cost_eur": 0, "hidden": false, "shopping": false, "evening": false}]}`;
+  const d=await sample.json(prompt,{modelTier:'default',signal});
+  if(!d||d.found===false)throw{code:'not_found'};
+  const num=(v,a,b,def)=>{const n=Number(v);return isFinite(n)?clamp(n,a,b):def;};
+  const seen=new Set();
+  const places=(Array.isArray(d.places)?d.places:[]).map(p=>{const name=str(p&&p.name,90);const cat=AI_CATS.includes(p&&p.category)?p.category:null;if(!name||!cat||seen.has(name))return null;seen.add(name);
+    return[name,cat,Math.round(num(p.minutes,10,240,45)/5)*5,str(p.district,50),num(p.x,-60,60,0),num(p.y,-60,60,0),str(p.description,220),str(p.tip,220),(p.hidden?'h':'')+(p.shopping?'s':'')+(p.evening?'e':''),num(p.cost_eur,0,500,undefined)];}).filter(Boolean);
+  if(places.length<4)throw{code:'not_found'};
+  const name=str(d.name,60)||cap(dest);
+  const city={name,keys:[norm(dest),norm(name)],cur:str(d.currency,60)||'provjeri lokalnu valutu',plug:str(d.plug,120)||'Provjeri tip utičnica',transit:str(d.transit,160)||'Raspitaj se o dnevnoj karti',extra:(Array.isArray(d.tips)?d.tips:[]).map(t=>str(t,160)).filter(Boolean).slice(0,3),places,ai:true,fare:num(d.single_ticket_eur,0,20,2),level:clamp((Number(d.meal_eur)||18)/20,0.4,2)};
+  city.keys.forEach(k=>{if(k){AI[k]=city;poolCache.delete(k);}});saveAI();
+  return city;
+}
+const aiErrText=e=>{const c=e&&e.code;if(c==='not_granted')return 'Pristup Claudeu nije odobren – složen je okvirni plan.';if(c==='not_found')return 'Mjesto nije prepoznato – složen je okvirni plan.';if(c==='rate_limited')return 'Previše zahtjeva – pokušaj ponovno za minutu. Složen je okvirni plan.';return 'Stvarne lokacije nisu dohvaćene – složen je okvirni plan.';};
+const displayName=dest=>{const c=findCity(dest);return c?c.name:cap(dest);};
+const poolCache=new Map();
+function getPool(dest){
+  const key=norm(dest);if(poolCache.has(key))return poolCache.get(key);
+  const city=findCity(dest),label=displayName(dest)||'odredište',lvl=levelOf(city);
+  const kb=city?city.places.map(([name,cat,dur,district,x,y,desc,tip,flags,cost,lat,lon])=>{const p={name,cat,dur,district,x,y,desc,tip,flags:flags||'',generic:false};if(lat!=null&&lon!=null){p.lat=lat;p.lon=lon;}p.cost=estimateCost({...p,cost},lvl);return p;}):[];
+  const rng=rngFrom(hash(key||'x'));
+  const gen=GENERIC.map(([name,cat,dur,district,r,desc,tip,flags])=>{const a=rng()*Math.PI*2,d=0.15+rng()*r;return{name:name.replace('{c}',label),cat,dur,district,x:Math.cos(a)*d,y:Math.sin(a)*d,desc,tip,flags:flags||'',generic:true,cost:estimateCost({name,cat,dur,flags:flags||''},lvl)};});
+  const pool=[...kb,...gen];poolCache.set(key,pool);return pool;
+}
+function travelInfo(a,b,mode){
+  const straight=dist(a,b);let m=MODES[mode]||MODES.walk,icon=m.icon,label=m.verb,km=straight*m.k;
+  if((mode==='car'||mode==='transit')&&km<0.7){m=MODES.walk;icon='walk';label=MODES.walk.verb;km=straight*MODES.walk.k;}
+  return{min:Math.max(2,Math.round(km/m.speed*60+m.overhead)),km,icon,label};
+}
+function levelOf(city){return city?(LEVEL[city.name]!=null?LEVEL[city.name]:(city.level||0.9)):0.9;}
+function estimateCost(p,level){
+  if(p.name&&COST_OVERRIDE[p.name]!=null)return COST_OVERRIDE[p.name];
+  if(typeof p.cost==='number'&&isFinite(p.cost))return p.cost;
+  const f=p.flags||'',dur=p.dur||p.duration||45;let base=0;
+  if(p.cat==='food')base=dur>=60?26:dur>=40?14:8;else if(p.cat==='coffee')base=6;else if(p.cat==='culture')base=16;else if(p.cat==='activity')base=f.includes('s')?0:18;
+  return Math.round(base*level*2)/2;
+}
+const costOf=(s,city)=>typeof s.cost==='number'&&isFinite(s.cost)?s.cost:estimateCost({name:s.name,cat:s.cat,dur:s.duration,flags:s.flags||''},levelOf(city));
+function legFare(travel,city){
+  if(travel.icon==='walk'||travel.icon==='bike')return 0;
+  if(travel.icon==='bus')return city?(FARE[city.name]!=null?FARE[city.name]:(city.fare||2)):2;
+  return Math.round((travel.km*0.2+2.5*levelOf(city))*10)/10;
+}
+function tripCosts(st){
+  const r={tickets:0,food:0,transport:0,total:0,perDay:[]};
+  st.days.forEach(a=>{let d=0;schedule(a,st.trip).forEach(s=>{const v=s.cost||0;if(s.cat==='food'||s.cat==='coffee')r.food+=v;else r.tickets+=v;d+=v;if(s.travel){r.transport+=s.travel.fare||0;d+=s.travel.fare||0;}});r.perDay.push(d);});
+  r.total=r.tickets+r.food+r.transport;return r;
+}
+function schedule(stops,trip){
+  let t=toMin(trip.start);const endLimit=toMin(trip.end);const city=findCity(trip.destination);
+  return stops.map((s,i)=>{let travel=null;if(i>0){travel=travelInfo(stops[i-1],s,trip.mode);travel.fare=legFare(travel,city);t+=travel.min;}t+=s.delay||0;const start=t;t+=s.duration;return{...s,cost:costOf(s,city),start,end:t,travel,over:t>endLimit};});
+}
+const toStop=p=>({id:uid(),name:p.name,cat:p.cat,duration:p.dur,district:p.district||'',desc:p.desc||'',tip:p.tip||'',note:'',delay:0,x:p.x||0,y:p.y||0,flags:p.flags||'',generic:!!p.generic,cost:typeof p.cost==='number'?p.cost:undefined,lat:p.lat,lon:p.lon});
+function nearestOrder(list){
+  if(list.length<2)return list.slice();
+  const rest=list.slice();rest.sort((a,b)=>Math.hypot(a.x,a.y)-Math.hypot(b.x,b.y));
+  const out=[rest.shift()];
+  while(rest.length){const last=out[out.length-1];let bi=0;rest.forEach((p,i)=>{if(dist(p,last)<dist(rest[bi],last))bi=i;});out.push(rest.splice(bi,1)[0]);}
+  return out;
+}
+function generatePlan(trip,seed){
+  const rng=rngFrom(seed>>>0);const city=findCity(trip.destination);const pool=getPool(trip.destination);
+  const nDays=trip.multiDay?clamp(trip.days||2,2,5):1;const s0=toMin(trip.start),e0=toMin(trip.end);const win=Math.max(60,e0-s0);
+  const focus=FOCUS.filter(f=>trip.focus.includes(f.id));
+  const favored=p=>focus.some(f=>(f.cats&&f.cats.includes(p.cat))||(f.flag&&p.flags.includes(f.flag)));
+  const used=new Set();const days=[];
+  for(let d=0;d<nDays;d++){
+    let cand=pool.filter(p=>!used.has(p.name)&&(!city||!p.generic));
+    if(city&&cand.length<5)cand=cand.concat(pool.filter(p=>p.generic&&!used.has(p.name)));
+    const scored=cand.map(p=>({p,s:1+(favored(p)?2.4:0)+rng()*1.3-(p.dur>=120&&win<480?1.2:0)-(p.flags.includes('e')&&e0<18*60?1.5:0)})).sort((a,b)=>b.s-a.s);
+    const picked=[];let sum=0;const budget=win*0.84;
+    const tryAdd=p=>{if(picked.includes(p))return;const cost=p.dur+(picked.length?14:0);if(sum+cost<=budget&&picked.length<9){picked.push(p);sum+=cost;}};
+    if(s0<=13*60&&e0>=13*60+30){const f=scored.find(x=>x.p.cat==='food'&&x.p.dur>=45);if(f)tryAdd(f.p);}
+    if(e0>=19*60+30){const f=scored.find(x=>x.p.cat==='food'&&x.p.dur>=60&&!picked.includes(x.p));if(f)tryAdd(f.p);}
+    if(win>=300){const c=scored.find(x=>x.p.cat==='coffee');if(c)tryAdd(c.p);}
+    scored.forEach(x=>tryAdd(x.p));
+    picked.forEach(p=>used.add(p.name));
+    days.push(arrange(picked,trip).map(toStop));
+  }
+  return days;
+}
+function arrange(picked,trip){
+  const evening=picked.filter(p=>p.flags.includes('e'));const meals=picked.filter(p=>p.cat==='food'&&p.dur>=45&&!p.flags.includes('e'));
+  const lunch=meals[0]||null,dinner=toMin(trip.end)>=19*60+30?(meals[1]||null):null;
+  let core=nearestOrder(picked.filter(p=>!evening.includes(p)&&p!==lunch&&p!==dinner));
+  if(lunch){let t=toMin(trip.start),pos=core.length;for(let i=0;i<core.length;i++){if(i>0)t+=travelInfo(core[i-1],core[i],trip.mode).min;if(t>=12*60+15){pos=i;break;}t+=core[i].dur;}core.splice(pos,0,lunch);}
+  const tail=nearestOrder(evening);if(dinner)tail.push(dinner);
+  return core.concat(tail);
+}
+function nextAlternative(s,st){
+  const pool=getPool(st.trip.destination);const city=findCity(st.trip.destination);const origin=s.origin||{x:s.x,y:s.y};
+  const used=new Set([].concat(...st.days,st.later).filter(x=>x.id!==s.id).map(x=>x.name));
+  const fits=cats=>pool.filter(p=>cats.includes(p.cat)&&!used.has(p.name));
+  let c=fits([s.cat]).filter(p=>!city||!p.generic);
+  if(c.filter(p=>p.name!==s.name).length<2)c=c.concat(fits(CAT_GROUP[s.cat]||[]).filter(p=>!city||!p.generic));
+  if(c.filter(p=>p.name!==s.name).length<2)c=c.concat(fits([s.cat]).filter(p=>p.generic));
+  const seen=new Set();c=c.filter(p=>!seen.has(p.name)&&seen.add(p.name));
+  if(!c.some(p=>p.name===s.name))c.push({name:s.name,cat:s.cat,dur:s.duration,district:s.district,x:origin.x,y:origin.y,desc:s.desc,tip:s.tip,flags:s.flags||'',generic:s.generic,cost:s.cost});
+  const list=c.sort((a,b)=>dist(a,origin)-dist(b,origin)).slice(0,5);
+  if(!list.some(p=>p.name===s.name))list[list.length-1]=c.find(p=>p.name===s.name);
+  if(list.length<2)return null;
+  const i=list.findIndex(p=>p.name===s.name);const next=list[(i+1)%list.length];
+  return{...toStop(next),id:s.id,delay:s.delay,origin};
+}
+function buildExport(st){
+  const t=st.trip;const out=[];
+  out.push('🗺️ PLAN IZLETA – '+displayName(t.destination).toUpperCase());
+  out.push('📅 '+fmtDate(t.date)+(st.days.length>1?' ('+st.days.length+' dana)':'')+' · '+t.start+'–'+t.end+' · '+MODES[t.mode].label);
+  const cur=t.currency||'EUR';const tc=tripCosts(st);
+  out.push('💶 Procijenjeni trošak: '+money(tc.total,cur)+(t.budget?' (budžet '+money(t.budget,cur)+')':''));
+  if(t.focus.length)out.push('🎯 Fokus: '+t.focus.map(id=>(FOCUS.find(f=>f.id===id)||{}).label).join(', '));
+  st.days.forEach((arr,d)=>{
+    const s=schedule(arr,t);out.push('');
+    out.push(st.days.length>1?'*'+(d+1)+'. dan – '+fmtDate(addDays(t.date,d))+'*':'*Raspored*');
+    if(!s.length)out.push('(nema lokacija)');
+    s.forEach((x,i)=>{
+      if(x.travel)out.push('   ↓ '+fmtD(x.travel.min)+' '+x.travel.label+' ('+fmtKm(x.travel.km)+(x.travel.fare>0?' · ~'+money(x.travel.fare,cur):'')+')');
+      out.push((i+1)+'. '+fmtT(x.start)+'–'+fmtT(x.end)+'  '+x.name+(x.district?' ('+x.district+')':'')+' – '+(x.cost>0?money(x.cost,cur):'besplatno')+(x.over?'  ⚠️ nakon planiranog kraja':''));
+      if(x.tip)out.push('   💡 '+x.tip);
+      if(x.note)out.push('   📝 '+x.note);
+    });
+  });
+  out.push('','*Troškovi*','Ulaznice i aktivnosti: '+money(tc.tickets,cur),'Hrana i piće: '+money(tc.food,cur),'Prijevoz: '+money(tc.transport,cur),'Ukupno: '+money(tc.total,cur)+(t.budget?' od '+money(t.budget,cur)+' budžeta':''));
+  if(st.later.length){out.push('','*Za kasnije*');st.later.forEach(x=>out.push('• '+x.name+' ('+fmtD(x.duration)+')'));}
+  return out.join('\n');
+}
+function contextFor(trip){
+  const city=findCity(trip.destination);
+  const tips=city&&!city.osm?['Valuta: '+city.cur,city.plug,'Prijevoz: '+city.transit,...city.extra]:['Provjeri lokalnu valutu i prihvaćaju li se kartice','Provjeri tip utičnica i ponesi adapter ako treba','Raspitaj se o dnevnoj karti za javni prijevoz','Broj za hitne slučajeve u EU je 112'];
+  const items=['Mobitel, punjač i power bank','Osobna iskaznica ili putovnica','Kartica i malo gotovine','Boca vode','Udobna obuća','Offline karta odredišta'];
+  const byMode={car:['Vozačka i prometna dozvola','Aplikacija ili kovanice za parking','Sunčane naočale za vožnju'],transit:['Karta ili aplikacija za prijevoz','Raspored polazaka spremljen offline'],walk:['Flasteri za žuljeve','Kapa i krema za sunčanje'],bike:['Kaciga','Prednje i stražnje svjetlo','Lokot za bicikl']};
+  const byFocus={gastro:'Rezervacija stola za ručak ili večeru',nature:'Lagana jakna ili kabanica',hidden:'Popis skrivenih mjesta spremljen offline',relax:'Knjiga ili slušalice',shopping:'Sklopiva vrećica za kupljeno',history:'Ulaznice kupljene unaprijed'};
+  if(city&&city.osm)tips.push('Lokacije su s OpenStreetMapa – radno vrijeme provjeri prije dolaska');
+  if(city&&!city.osm&&city.plug&&!city.plug.startsWith('Utičnice su iste'))items.push('Adapter za utičnice');
+  return{tips,items:[...items,...(byMode[trip.mode]||[]),...trip.focus.map(f=>byFocus[f]).filter(Boolean)]};
+}
+
+/* ---------- Karte i OpenStreetMap ---------- */
+const CENTER={Rim:[41.896,12.4823],Tokio:[35.6812,139.7671],Pariz:[48.853,2.3499],London:[51.508,-0.1281],'New York':[40.757,-73.986],Barcelona:[41.387,2.17],Istanbul:[41.0055,28.9768],Kyoto:[35.0037,135.768],'Beč':[48.2085,16.3731],Prag:[50.0875,14.4213],Lisabon:[38.7075,-9.1364],Zagreb:[45.8131,15.9775],'Budimpešta':[47.497,19.051]};
+const centerOf=city=>city?(city.center||CENTER[city.name]||null):null;
+const llToXY=(lat,lon,c)=>({x:(lon-c[1])*111.32*Math.cos(c[0]*Math.PI/180),y:(lat-c[0])*110.57});
+const xyToLL=(x,y,c)=>({lat:c[0]+y/110.57,lon:c[1]+x/(111.32*Math.cos(c[0]*Math.PI/180))});
+const llStr=s=>s.lat.toFixed(6)+','+s.lon.toFixed(6);
+function mapsLinks(s,destName){const q=hasLL(s)?llStr(s):s.name+', '+destName;return{google:'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(hasLL(s)?s.name+' '+q:q),apple:'https://maps.apple.com/?q='+encodeURIComponent(s.name)+(hasLL(s)?'&ll='+llStr(s):'&address='+encodeURIComponent(destName))};}
+function routeLink(sched,trip){if(sched.length<2)return null;const dn=displayName(trip.destination);const pt=s=>hasLL(s)?llStr(s):s.name+', '+dn;const tm={car:'driving',transit:'transit',walk:'walking',bike:'bicycling'}[trip.mode]||'walking';const mid=sched.slice(1,-1).slice(0,8).map(pt).join('|');
+  return 'https://www.google.com/maps/dir/?api=1&origin='+encodeURIComponent(pt(sched[0]))+'&destination='+encodeURIComponent(pt(sched[sched.length-1]))+(mid?'&waypoints='+encodeURIComponent(mid):'')+'&travelmode='+tm;}
+const LIVE={on:true};try{if(localStorage.getItem('planer-live')==='0')LIVE.on=false;}catch(e){}
+const isOffline=()=>typeof navigator!=='undefined'&&navigator.onLine===false;
+async function fetchJSON(url,opts,ms){const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),ms||15000);try{const r=await fetch(url,Object.assign({},opts||{},{signal:ctl.signal}));if(!r.ok)throw new Error('HTTP '+r.status);return await r.json();}finally{clearTimeout(t);}}
+const GEO_KEY='planer-geo-v1';const GEO={};try{Object.assign(GEO,JSON.parse(localStorage.getItem(GEO_KEY)||'{}'));}catch(e){}
+async function geocode(dest){
+  const k=norm(dest);if(GEO[k])return GEO[k];if(!LIVE.on||isOffline())throw{code:'offline'};
+  const d=await fetchJSON('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=hr&q='+encodeURIComponent(dest),{headers:{Accept:'application/json'}},10000);
+  if(!Array.isArray(d)||!d.length)throw{code:'not_found'};
+  const g=d[0],bb=(g.boundingbox||[]).map(Number);let rad=2500;if(bb.length===4&&bb.every(isFinite))rad=clamp(hav(bb[0],bb[2],bb[1],bb[3])*1000/4,700,4000);
+  const r={lat:+g.lat,lon:+g.lon,name:String(g.name||String(g.display_name||'').split(',')[0]||cap(dest)).trim(),rad:Math.round(rad)};
+  GEO[k]=r;try{localStorage.setItem(GEO_KEY,JSON.stringify(GEO));}catch(e){}return r;
+}
+const OSM_Q={
+  food:a=>`nwr(${a})["amenity"="restaurant"]["name"];`,
+  coffee:a=>`nwr(${a})["amenity"~"^(cafe|ice_cream)$"]["name"];`,
+  culture:a=>`nwr(${a})["tourism"~"^(museum|gallery)$"]["name"];nwr(${a})["amenity"="theatre"]["name"];`,
+  sight:a=>`nwr(${a})["tourism"="attraction"]["name"];nwr(${a})["historic"~"^(castle|monument|memorial|ruins|fort|city_gate|archaeological_site|palace|church|tower)$"]["name"];nwr(${a})["amenity"="place_of_worship"]["name"]["wikidata"];`,
+  nature:a=>`nwr(${a})["leisure"~"^(park|garden|nature_reserve)$"]["name"];nwr(${a})["tourism"="viewpoint"];nwr(${a})["natural"="beach"]["name"];`,
+  activity:a=>`nwr(${a})["tourism"~"^(zoo|aquarium|theme_park)$"]["name"];nwr(${a})["leisure"="water_park"]["name"];`,
+};
+async function overpass(lat,lon,rad,cats,limit){
+  if(!LIVE.on||isOffline())throw{code:'offline'};
+  const a='around:'+Math.round(rad)+','+lat.toFixed(5)+','+lon.toFixed(5);
+  const q='[out:json][timeout:25];'+cats.map(c=>'('+OSM_Q[c](a)+');out center '+limit+';').join('');
+  const d=await fetchJSON('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(q)},25000);
+  return Array.isArray(d.elements)?d.elements:[];
+}
+function classify(t){
+  if(t.amenity==='restaurant')return 'food';if(t.amenity==='cafe'||t.amenity==='ice_cream')return 'coffee';
+  if(t.tourism==='museum'||t.tourism==='gallery'||t.amenity==='theatre')return 'culture';
+  if(/^(park|garden|nature_reserve)$/.test(t.leisure||'')||t.tourism==='viewpoint'||t.natural==='beach')return 'nature';
+  if(/^(zoo|aquarium|theme_park)$/.test(t.tourism||'')||t.leisure==='water_park')return 'activity';
+  return 'sight';
+}
+const DAYS_HR={Mo:'pon',Tu:'uto',We:'sri',Th:'čet',Fr:'pet',Sa:'sub',Su:'ned',PH:'blagdani',off:'zatvoreno'};
+const ohHr=v=>String(v).replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH|off)\b/g,m=>DAYS_HR[m]).replace(/;\s*/g,'; ').slice(0,90);
+const CUISINE={regional:'regionalna',local:'lokalna',italian:'talijanska',pizza:'pizza',japanese:'japanska',sushi:'sushi',ramen:'ramen',chinese:'kineska',french:'francuska',spanish:'španjolska',tapas:'tapas',mediterranean:'mediteranska',seafood:'riblja',fish:'riblja',burger:'burgeri',turkish:'turska',greek:'grčka',indian:'indijska',mexican:'meksička',thai:'tajlandska',vietnamese:'vijetnamska',korean:'korejska',vegetarian:'vegetarijanska',vegan:'veganska',croatian:'hrvatska',hungarian:'mađarska',austrian:'austrijska',german:'njemačka',czech:'češka',portuguese:'portugalska',steak_house:'odresci',coffee_shop:'kava',cake:'kolači',ice_cream:'sladoled',kebab:'kebab',asian:'azijska',american:'američka',international:'internacionalna',balkan:'balkanska'};
+const KIND={museum:'Muzej',gallery:'Galerija',theatre:'Kazalište',attraction:'Turistička atrakcija',viewpoint:'Vidikovac',park:'Park',garden:'Vrt',nature_reserve:'Zaštićena priroda',beach:'Plaža',zoo:'Zoološki vrt',aquarium:'Akvarij',theme_park:'Zabavni park',water_park:'Vodeni park',castle:'Dvorac',monument:'Spomenik',memorial:'Spomen-obilježje',ruins:'Ruševine',fort:'Utvrda',city_gate:'Gradska vrata',archaeological_site:'Arheološko nalazište',palace:'Palača',church:'Crkva',tower:'Toranj',place_of_worship:'Svetište',restaurant:'Restoran',cafe:'Kafić',ice_cream:'Slastičarnica'};
+function osmToPlace(el,c){
+  const t=el.tags||{};const lat=el.lat!=null?el.lat:(el.center&&el.center.lat);const lon=el.lon!=null?el.lon:(el.center&&el.center.lon);if(lat==null||lon==null)return null;
+  const name=String(t['name:hr']||t.name||(t.tourism==='viewpoint'?'Vidikovac':'')).trim().slice(0,90);if(!name)return null;
+  const cat=classify(t);const kk=t.amenity==='place_of_worship'?'place_of_worship':(t.tourism||t.historic||t.leisure||t.natural||t.amenity);const kind=KIND[kk]||'Znamenitost';
+  const cui=t.cuisine?t.cuisine.split(';').map(x=>CUISINE[x.trim()]).filter(Boolean).slice(0,2).join(', '):'';
+  const street=t['addr:street']?(t['addr:street']+(t['addr:housenumber']?' '+t['addr:housenumber']:'')):(t['addr:suburb']||t['addr:quarter']||'');
+  const dur={food:70,coffee:30,culture:t.tourism==='museum'?75:45,nature:t.tourism==='viewpoint'?25:45,activity:t.tourism==='zoo'?120:90,sight:/castle|palace|fort/.test(kk)?60:25}[cat];
+  const desc=kind+(cui?' – kuhinja: '+cui:'')+(t.wikidata?'. Jedna od poznatijih lokacija u mjestu.':'.');
+  const tip=t.opening_hours?'Radno vrijeme: '+ohHr(t.opening_hours):(t.fee==='no'?'Ulaz je besplatan.':'Provjeri radno vrijeme prije dolaska.');
+  const xy=llToXY(lat,lon,c);
+  return{name,cat,dur,district:street.slice(0,60),x:xy.x,y:xy.y,lat,lon,desc,tip,flags:(t.tourism==='viewpoint'?'e':'')+(cat==='sight'&&!t.wikidata?'h':''),cost:t.fee==='no'?0:undefined,generic:false,live:true,
+    score:(t.wikidata?3:0)+(t.wikipedia?2:0)+(t.opening_hours?0.5:0)+(t.website?0.5:0)+(t.cuisine&&/regional|local|croatian/.test(t.cuisine)?1.5:0)};
+}
+async function fetchOsmCity(dest){
+  const g=await geocode(dest);const c=[g.lat,g.lon];
+  const els=await overpass(g.lat,g.lon,g.rad,['sight','culture','food','coffee','nature','activity'],35);
+  const seen=new Set();const all=els.map(e=>osmToPlace(e,c)).filter(p=>p&&!seen.has(p.name)&&seen.add(p.name));
+  const quota={sight:6,culture:4,food:4,coffee:3,nature:3,activity:2};const pick=[];
+  Object.keys(quota).forEach(k=>all.filter(p=>p.cat===k).sort((a,b)=>(b.score-a.score)||(Math.hypot(a.x,a.y)-Math.hypot(b.x,b.y))).slice(0,quota[k]).forEach(p=>pick.push(p)));
+  if(pick.length<6)throw{code:'not_found'};
+  const name=g.name||cap(dest);
+  const city={name,keys:[norm(dest),norm(name)],cur:'',plug:'',transit:'',extra:[],places:pick.map(p=>[p.name,p.cat,p.dur,p.district,+p.x.toFixed(3),+p.y.toFixed(3),p.desc,p.tip,p.flags,p.cost,+p.lat.toFixed(6),+p.lon.toFixed(6)]),center:c,osm:true,level:0.9};
+  city.keys.forEach(k=>{if(k){AI[k]=city;poolCache.delete(k);}});saveAI();return city;
+}
+async function discoverNear(ref,trip,cats){
+  const city=findCity(trip.destination);let c=centerOf(city);
+  if(!c){const g=await geocode(trip.destination);c=[g.lat,g.lon];}
+  const ll=hasLL(ref)?{lat:ref.lat,lon:ref.lon}:xyToLL((ref&&ref.x)||0,(ref&&ref.y)||0,c);
+  const rad=trip.mode==='walk'?1200:trip.mode==='bike'?2500:3000;
+  const els=await overpass(ll.lat,ll.lon,rad,cats,40);const seen=new Set();
+  return els.map(e=>osmToPlace(e,c)).filter(p=>p&&cats.includes(p.cat)&&!seen.has(p.name)&&seen.add(p.name))
+    .sort((a,b)=>(hav(ll.lat,ll.lon,a.lat,a.lon)-a.score*0.12)-(hav(ll.lat,ll.lon,b.lat,b.lon)-b.score*0.12));
+}
+
+/* ---------- AI asistent ---------- */
+const lc=v=>String(v||'').toLowerCase().replace(/đ/g,'d').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function parseDuration(t){
+  let m=t.match(/(\d+(?:[.,]\d+)?)\s*(?:h\b|sat|sata|sati)/);if(m)return Math.round(parseFloat(m[1].replace(',','.'))*60);
+  m=t.match(/(\d+)\s*(?:min|minuta|minute|m\b)/);if(m)return +m[1];
+  if(/\bdva sata\b/.test(t))return 120;if(/\bsat\b/.test(t))return 60;
+  m=t.match(/\+\s*(\d+)/);if(m)return +m[1];return null;
+}
+function parseClock(t){
+  let m=t.match(/(\d{1,2})[:.](\d{2})/);if(m&&+m[1]<24&&+m[2]<60)return +m[1]*60+ +m[2];
+  m=t.match(/(?:oko|u|do|od|nakon|poslije|prije|iza)\s+(\d{1,2})\s*h\b/);if(m&&+m[1]>=6&&+m[1]<24)return +m[1]*60;
+  m=t.match(/(?:oko|u|do|od|nakon|poslije|iza)\s+(\d{1,2})\b(?!\s*(?:min|sat|h\b|eur|€|lokac|stanic))/);if(m&&+m[1]<24)return +m[1]*60;
+  return null;
+}
+const STOPW=new Set(['dodaj','ubaci','stavi','makni','ukloni','izbaci','obrisi','zamijeni','odgodi','pomakni','lokaciju','lokacija','stanicu','kasnije','molim','sutra','sljedeci','umjesto','nesto','drugo','drugu','jedan','jednu','preskoci','ostavi','promijeni','alternativu','minuta','sata']);
+function matchStop(t,arr){
+  if(!arr.length)return null;
+  const ord=[[/\bprv\w*\s+(?:lokacij|stanic)|\bprvu\b/,0],[/\b(?:zadnj|posljednj)/,-1],[/\bdrug\w*\s+(?:lokacij|stanic)/,1],[/\btrec\w*\s+(?:lokacij|stanic)/,2]];
+  for(const [re,i] of ord)if(re.test(t)){const j=i<0?arr.length-1:i;if(arr[j])return arr[j];}
+  const toks=t.split(/[^a-z0-9]+/).filter(w=>w.length>=4&&!STOPW.has(w));let best=null,bs=0;
+  arr.forEach(x=>{const n=lc(x.name);let sc=0;toks.forEach(w=>{if(n.includes(w)||n.includes(w.slice(0,Math.max(4,w.length-2))))sc+=2;});if(sc>bs){bs=sc;best=x;}});
+  return bs>=2?best:null;
+}
+const usedNames=s=>new Set([].concat(...s.days,s.later).map(x=>x.name));
+function pickPlaces(s,cats,near,n,pred){
+  const city=findCity(s.trip.destination);const used=usedNames(s);
+  const pool=getPool(s.trip.destination).filter(p=>cats.includes(p.cat)&&!used.has(p.name)&&(!pred||pred(p)));
+  const real=pool.filter(p=>!p.generic);const list=city&&real.length?real:pool;
+  return list.slice().sort((a,b)=>dist(a,near)-dist(b,near)).slice(0,n||1);
+}
+async function pickOrDiscover(s,cats,near,pred){
+  let p=pickPlaces(s,cats,near,1,pred)[0];
+  if((!p||p.generic)&&LIVE.on){try{const used=usedNames(s);const f=(await discoverNear(near,s.trip,cats)).filter(x=>!used.has(x.name)&&(!pred||pred(x)));if(f[0])p=f[0];}catch(e){}}
+  return p||null;
+}
+const isOutdoor=x=>x.cat==='nature'||(!['culture','food','coffee'].includes(x.cat)&&/(park|setn|setalist|vidikov|plaz|staz|krstar|vrt|brdo|most\b|mostom|tramvaj|kotac|bastion|zid|raskrizj|trg|ulica|ulici|kanal|sum|otok|jezer|obal|tvrdav|bunker)/.test(lc(x.name)));
+const ADD_VERB=/(dodaj|ubaci|stavi|zelim|hocu|htio|htjela|trebam|treba mi|napravi|uvrsti|predlozi|jos jedan|jos jednu|jos jedno)/;
+const ANY_VERB=/(dodaj|ubaci|stavi|makni|ukloni|izbaci|obrisi|odgod|pomakni|zamijeni|prebaci|promijeni|smanji|prorijed|vrati|kreni|pocni|zavrs|preskoc|ostavi)/;
+async function localEngine(text,st,d){
+  let t=lc(text).replace(/sat i pol?\b/g,'90 min').replace(/po(l|la) sata/g,'30 min');
+  if(/^\s*(ponisti|vrati to|vrati zadnje)/.test(t))return{undo:true,reply:'Poništio sam zadnju izmjenu.'};
+  if(!st.days[d])return null;
+  const s={...st,trip:{...st.trip},days:st.days.map(a=>a.slice()),later:st.later.slice()};
+  const msgs=[];const C=s.trip.currency||'EUR';const day=()=>s.days[d]||[];const setDay=a=>{s.days[d]=a;};
+  const focus=FOCUS.filter(f=>s.trip.focus.includes(f.id));const fav=x=>focus.some(f=>(f.cats&&f.cats.includes(x.cat))||(f.flag&&(x.flags||'').includes(f.flag)));
+  const insert=(stop,clock)=>{const a=day().slice();let i;
+    if(clock!=null){const sc=schedule(a,s.trip);i=sc.findIndex(x=>x.start>=clock-10);if(i<0)i=a.length;}
+    else if(a.length<2)i=a.length;else{i=a.length;let bc=dist(a[a.length-1],stop);for(let j=1;j<a.length;j++){const c2=dist(a[j-1],stop)+dist(stop,a[j])-dist(a[j-1],a[j]);if(c2<bc){bc=c2;i=j;}}}
+    a.splice(i,0,stop);if(clock!=null){const sc=schedule(a,s.trip);const gap=clock-sc[i].start;if(gap>10&&gap<=180)a[i]={...a[i],delay:(a[i].delay||0)+gap};}
+    setDay(a);return schedule(a,s.trip)[i];};
+  const nearFor=clock=>{const a=day();if(!a.length)return{x:0,y:0};if(clock==null)return a[Math.floor(a.length/2)];const sc=schedule(a,s.trip);const i=sc.findIndex(x=>x.start>=clock);return a[i<=0?(i<0?a.length-1:0):i-1];};
+  let prevAdd=false;const done=new Set();const once=k=>{if(done.has(k))return false;done.add(k);return true;};
+  const run=async c=>{
+    const has=re=>re.test(c);const hasVerb=has(ANY_VERB);const addMode=has(ADD_VERB)||(!hasVerb&&prevAdd);prevAdd=addMode;
+    const a0=day();const target=matchStop(c,a0);
+    if(target&&has(/za kasnije|ostavi|preskoc|sutra|sljedeci dan/)){
+      const a=a0.filter(x=>x.id!==target.id);setDay(a);
+      if(has(/sutra|sljedeci dan/)&&s.days[d+1]){s.days[d+1]=[...s.days[d+1],{...target,delay:0}];msgs.push(target.name+' sam prebacio na '+(d+2)+'. dan.');}
+      else{s.later.push({...target,delay:0});msgs.push(target.name+' je u popisu Za kasnije.');}return true;}
+    if(target&&has(/makni|ukloni|izbaci|obrisi|brisi/)){setDay(a0.filter(x=>x.id!==target.id));msgs.push('Uklonio sam '+target.name+'.');return true;}
+    const modeHit=has(/pjes|hodanj|hodati/)?'walk':has(/bicikl/)?'bike':has(/javn|metro|autobus|tramvaj|vlak/)?'transit':has(/\bauto|automobil|voznj/)?'car':null;
+    if(modeHit&&has(/prebaci|promijeni|idemo|koristi|nacin|prijevoz|\bsve\b|kreni|putuj|ici|idem/)){
+      if(s.trip.mode!==modeHit){s.trip.mode=modeHit;msgs.push('Način putovanja sada je: '+MODES[modeHit].label.toLowerCase()+'. Vremena i cijene prijevoza su preračunati.');}else msgs.push('Već je odabrano: '+MODES[modeHit].label.toLowerCase()+'.');return true;}
+    if(has(/kis|pljus|nevrijem|lose vrijeme|zatvoren|unutarnj|unutra|pod krov/)){if(!once('rain'))return true;
+      const a=a0.slice();const swaps=[],moved=[];
+      for(let i=0;i<a.length;i++){const x=a[i];if(!isOutdoor(x))continue;setDay(a.slice());
+        const p=await pickOrDiscover(s,['culture'],x)||await pickOrDiscover(s,['coffee'],x);
+        if(p){a[i]={...toStop(p),delay:x.delay||0};swaps.push(x.name+' → '+p.name);}else{a.splice(i,1);i--;s.later.push({...x,delay:0});moved.push(x.name);}
+        setDay(a.slice());}
+      if(!swaps.length&&!moved.length)msgs.push('U planu za ovaj dan nema vanjskih lokacija – sve je već pod krovom.');
+      else{if(swaps.length)msgs.push('Zamijenio sam vanjske lokacije zatvorenima: '+swaps.join('; ')+'.');if(moved.length)msgs.push('Za ove nisam našao zamjenu pa su u Za kasnije: '+moved.join(', ')+'.');}
+      return true;}
+    if(has(/natrpan|prorijed|previse|manje lokacij|manje stanic|opusten|rasterecen|skrati raspored|izbaci nesto|sporij/)){if(!once('thin'))return true;
+      const a=a0.slice();if(a.length<=3){msgs.push('Raspored je već prozračan – ima samo '+a.length+' lokacije.');return true;}
+      const imp=x=>(x.cat==='food'&&x.duration>=45?50:0)+(x.cat==='coffee'?6:0)+(fav(x)?10:0)+(x.generic?-5:2)-x.duration/120;
+      const endT=toMin(s.trip.end);const goal=Math.max(1,Math.ceil(a.length*0.25));const removed=[];
+      while(a.length>3){const sc=schedule(a,s.trip);const over=sc[sc.length-1].end>endT-30;if(removed.length>=goal&&!over)break;let wi=0,wv=1e9;a.forEach((x,i)=>{const v=imp(x);if(v<wv){wv=v;wi=i;}});removed.push(a.splice(wi,1)[0]);}
+      setDay(a);s.later.push(...removed.map(x=>({...x,delay:0})));const sc=schedule(a,s.trip);
+      msgs.push('Prorijedio sam raspored. U Za kasnije su: '+removed.map(x=>x.name).join(', ')+'. Sada imaš '+a.length+' lokacija i završavaš oko '+fmtT(sc[sc.length-1].end)+'.');return true;}
+    if(has(/jeftin|trosk|budzet|usted|skup|cijen|novc|novac/)){if(!once('cheap'))return true;
+      const city=findCity(s.trip.destination);const before=tripCosts(s).total;const a=a0.slice();
+      const order=a.map(x=>({x,c:costOf(x,city)})).filter(o=>o.c>=8).sort((p,q)=>q.c-p.c);const goal=s.trip.budget>0?Math.min(s.trip.budget,before*0.85):before*0.7;const ch=[];
+      for(const o of order){if(tripCosts(s).total<=goal)break;const idx=a.indexOf(o.x);if(idx<0)continue;
+        const p=pickPlaces(s,[o.x.cat,...(CAT_GROUP[o.x.cat]||[])],o.x,10).find(p=>(p.cost||0)<=o.c*0.5);
+        if(p){a[idx]={...toStop(p),delay:o.x.delay||0};ch.push(o.x.name+' → '+p.name+' ('+((p.cost||0)>0?money(p.cost,C):'besplatno')+')');}
+        else if(o.x.cat!=='food'&&o.c>=20){a.splice(idx,1);s.later.push({...o.x,delay:0});ch.push(o.x.name+' premješteno u Za kasnije');}
+        setDay(a.slice());}
+      const after=tripCosts(s).total;
+      if(!ch.length)msgs.push('Nisam našao jeftinije zamjene – trošak je '+money(before,C)+'. Možeš ručno odgoditi skuplje lokacije.');
+      else msgs.push('Uštedio sam oko '+money(before-after,C)+': '+ch.join('; ')+'. Novi procijenjeni trošak je '+money(after,C)+'.');
+      if(s.trip.mode==='car')msgs.push('Savjet: javnim prijevozom uštedio bi i na gorivu i parkingu.');return true;}
+    const addCat=has(/kav|kafic|kafe|pauz|slastic|sladoled|desert|kolac/)?'coffee':has(/restoran|rucak|rucka|vecer|jelo|hran|pojest|konob|bistro|dorucak|gastro/)?'food':has(/muzej|galerij|izlozb|kazalist|kultur/)?'culture':has(/park|prirod|vidikov|setn|vrt\b|plaz|zelen|sum/)?'nature':has(/znamenit|spomenik|crkv|katedral|dvorac|trg\b|atrakcij|povijes/)?'sight':has(/aktivnost|zabav|avantur|tura\b|kupalist|shopping|kupovin|iskustv/)?'activity':null;
+    if(addCat&&addMode){
+      const count=has(/\b(dva|dvije)\b/)?2:has(/\btri\b/)?3:1;let clock=parseClock(c);
+      if(clock==null&&addCat==='food'){const w=has(/vecer/)?19*60+30:has(/dorucak/)?9*60:12*60+30;if(w>toMin(s.trip.start)&&w<toMin(s.trip.end))clock=w;}
+      const added=[];for(let k=0;k<count;k++){const pred=addCat==='food'&&!has(/brz|ulicn|zalogaj/)?(p=>p.dur>=45):null;
+        const p=await pickOrDiscover(s,[addCat],nearFor(clock),pred);if(!p)break;const x=insert(toStop(p),clock);added.push(x.name+' u '+fmtT(x.start));if(clock!=null)clock=x.end+20;}
+      if(added.length)msgs.push('Dodao sam: '+added.join('; ')+'.');else msgs.push('Nisam našao novu lokaciju te vrste – sve iz baze već je u planu.'+(LIVE.on?'':' Uključi pretragu uživo u Postavkama.'));
+      return true;}
+    if(has(/odgod|pomakni|pomak|kasnije|ranije|unaprijed/)){
+      const m=parseDuration(c)||30;const neg=has(/ranije|unaprijed/);const a=a0.slice();if(!a.length)return false;
+      if(target&&!has(/\bsve\b|cijel|raspored/)){const i=a.findIndex(x=>x.id===target.id);a[i]={...a[i],delay:neg?Math.max(0,(a[i].delay||0)-m):(a[i].delay||0)+m};setDay(a);msgs.push((neg?'Pomaknuo sam ranije: ':'Odgodio sam: ')+target.name+' ('+fmtD(m)+'). Sljedeće lokacije su pomaknute.');return true;}
+      if(neg){s.trip.start=fmtT(toMin(s.trip.start)-m);msgs.push('Početak dana sada je u '+s.trip.start+'.');}
+      else{a[0]={...a[0],delay:(a[0].delay||0)+m};setDay(a);msgs.push('Odgodio sam cijeli raspored za '+fmtD(m)+'. Prva lokacija počinje u '+fmtT(schedule(a,s.trip)[0].start)+'.');}
+      return true;}
+    if(target&&has(/zamijeni|promijeni|drug|alternativ/)){const n=nextAlternative(target,s);if(!n){msgs.push('Za '+target.name+' nemam alternativu.');return true;}setDay(a0.map(x=>x.id===target.id?n:x));msgs.push('Zamijenio sam '+target.name+' lokacijom '+n.name+'.');return true;}
+    const clk=parseClock(c);
+    if(clk!=null&&has(/zavrs|kraj|gotov|vratit/)){s.trip.end=fmtT(clk);msgs.push('Kraj dana postavljen je na '+s.trip.end+'.');return true;}
+    if(clk!=null&&has(/pocn|pocetak|krenem|kreni|start/)){s.trip.start=fmtT(clk);msgs.push('Početak dana postavljen je na '+s.trip.start+'.');return true;}
+    return false;
+  };
+  let did=false;
+  for(const c of t.split(/\s+(?:i|pa|te|onda|zatim|a)\s+|[,;!?]+\s*|\.\s+|\s[–-]\s/).map(x=>x.trim()).filter(Boolean)){if(await run(c))did=true;}
+  if(!did&&await run(t))did=true;
+  return did?{state:s,reply:msgs.join(' ')}:null;
+}
+function buildRemotePrompt(text,st,d){
+  const sched=schedule(st.days[d]||[],st.trip);const used=usedNames(st);
+  const cand=getPool(st.trip.destination).filter(p=>!used.has(p.name)).slice(0,30).map(p=>({name:p.name,cat:p.cat,minutes:p.dur,cost_eur:Math.round(p.cost||0),district:p.district}));
+  const payload={destination:displayName(st.trip.destination),day:d+1,date:addDays(st.trip.date,d),start:st.trip.start,end:st.trip.end,mode:st.trip.mode,budget_eur:Math.round(st.trip.budget||0),
+    stops:sched.map(x=>({id:x.id,name:x.name,cat:x.cat,minutes:x.duration,delay:x.delay||0,cost_eur:Math.round(x.cost||0),start:fmtT(x.start),end:fmtT(x.end),district:x.district,note:x.note})),later:st.later.map(x=>({id:x.id,name:x.name})),candidates:cand};
+  return `You edit one day of a trip itinerary at the user's request. Request (Croatian): «${String(text).slice(0,600)}»
+Current plan as JSON:
+${JSON.stringify(payload)}
+Reply with JSON only, no prose:
+{"reply":"one or two friendly sentences in natural Croatian saying exactly what you changed","mode":"walk|transit|car|bike (only if it should change)","start":"HH:MM (only if it should change)","end":"HH:MM (only if it should change)","stops":[{"id":"existing id"} OR {"new":true,"name":"...","cat":"food|coffee|sight|culture|nature|activity","minutes":45,"cost_eur":0,"district":"...","description":"one sentence in Croatian","tip":"one practical tip in Croatian"}],"later_ids":["ids moved to the later list"]}
+Rules: "stops" is the complete new order for the day; any item may also set "minutes", "delay" (extra waiting minutes before it) and "note". The app computes times from order, minutes, delay and travel, so do not send times for stops. Prefer names from "candidates" for new places and only add real places that exist. Stops you leave out are moved to the later list automatically.`;
+}
+function applyRemote(res,st,d){
+  if(!res||typeof res!=='object')throw new Error('neispravan odgovor modela');
+  const cur=st.days[d]||[];const byId=new Map(cur.map(x=>[x.id,x]));const pool=getPool(st.trip.destination);const out=[];const kept=new Set();
+  const n=v=>typeof v==='number'&&isFinite(v);
+  (Array.isArray(res.stops)?res.stops:[]).forEach(o=>{if(!o||typeof o!=='object')return;
+    const id=o.id!=null?String(o.id):null;
+    if(id&&byId.has(id)&&!kept.has(id)){const x={...byId.get(id)};kept.add(id);if(n(o.minutes))x.duration=clamp(Math.round(o.minutes),5,600);if(n(o.delay))x.delay=clamp(Math.round(o.delay),0,600);if(typeof o.note==='string')x.note=o.note.slice(0,200);out.push(x);}
+    else if(o.name){const name=str(o.name,90);if(!name)return;const pm=pool.find(p=>p.name===name);const prev=out[out.length-1]||cur[0]||{x:0,y:0};
+      const x=pm?toStop(pm):{id:uid(),name,cat:AI_CATS.includes(o.cat)?o.cat:'sight',duration:45,district:str(o.district,50),desc:str(o.description,220),tip:str(o.tip,220),note:'',delay:0,x:(prev.x||0)+(Math.random()-.5)*.5,y:(prev.y||0)+(Math.random()-.5)*.5,flags:'',generic:false,cost:n(o.cost_eur)?Math.max(0,o.cost_eur):undefined};
+      if(n(o.minutes))x.duration=clamp(Math.round(o.minutes),5,600);if(n(o.delay))x.delay=clamp(Math.round(o.delay),0,600);out.push(x);}});
+  if(!out.length&&cur.length)throw new Error('model je vratio prazan plan');
+  const moved=cur.filter(x=>!kept.has(x.id)).map(x=>({...x,delay:0}));
+  const trip={...st.trip};if(MODES[res.mode])trip.mode=res.mode;const hm=v=>typeof v==='string'&&/^\d{1,2}:\d{2}$/.test(v)&&toMin(v)<1440;if(hm(res.start))trip.start=res.start;if(hm(res.end))trip.end=res.end;
+  return{...st,trip,days:st.days.map((a,i)=>i===d?out:a),later:[...st.later,...moved]};
+}
+const API_KEY='planer-api-v1';
+const loadApi=()=>{try{return Object.assign({provider:'none',key:'',model:''},JSON.parse(localStorage.getItem(API_KEY)||'{}'));}catch(e){return{provider:'none',key:'',model:''};}};
+const saveApi=v=>{try{localStorage.setItem(API_KEY,JSON.stringify(v));}catch(e){}};
+const DEFAULT_MODEL={anthropic:'claude-haiku-5-5',openai:'gpt-4o-mini'};
+const parseJsonText=t=>{const x=String(t||'').replace(/```json|```/g,'').trim();const a=x.indexOf('{'),b=x.lastIndexOf('}');if(a<0||b<a)throw new Error('model nije vratio JSON');return JSON.parse(x.slice(a,b+1));};
+async function callByok(cfg,prompt){
+  if(cfg.provider==='anthropic'){
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':cfg.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:cfg.model||DEFAULT_MODEL.anthropic,max_tokens:4000,messages:[{role:'user',content:prompt}]})});
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error((j.error&&j.error.message)||('HTTP '+r.status));return (j.content||[]).map(b=>b.text||'').join('');}
+  const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+cfg.key},body:JSON.stringify({model:cfg.model||DEFAULT_MODEL.openai,response_format:{type:'json_object'},messages:[{role:'user',content:prompt}]})});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error((j.error&&j.error.message)||('HTTP '+r.status));return ((j.choices||[])[0]||{}).message?.content||'';
+}
+const QUICK_CMDS=['🌧️ Pada kiša – zamijeni vanjske lokacije zatvorenima','🍽️ Dodaj autentičan lokalni restoran za ručak','⚡ Previše je natrpano – prorijedi raspored','💰 Smanji troškove izleta'];
+
+/* ---------- Pohrana ---------- */
+const STORE='globalni-planer-izleta-v1';
+const load=()=>{try{const r=localStorage.getItem(STORE);return r?JSON.parse(r):null;}catch(e){return null;}};
+const save=v=>{try{localStorage.setItem(STORE,JSON.stringify(v));}catch(e){}};
+const DEFAULT_TRIP={destination:'',date:todayIso(),start:'09:00',end:'21:00',multiDay:false,days:3,mode:'walk',focus:[],currency:'EUR',budget:0};
+const EMPTY={trip:DEFAULT_TRIP,days:[],later:[],generated:false};
+const WIDGET_META={summary:{title:'Sažetak i statistika',icon:'activity'},budget:{title:'Budžet i troškovi',icon:'wallet'},route:{title:'Karta rute',icon:'route'},later:{title:'Za kasnije',icon:'archive'},context:{title:'Putni kontekst i check-lista',icon:'list'}};
+const DEFAULT_WIDGETS=[{id:'summary',on:true},{id:'budget',on:true},{id:'route',on:true},{id:'later',on:true},{id:'context',on:true}];
+
+function useHistory(init){
+  const [h,setH]=useState({past:[],present:init,future:[]});
+  const commit=useCallback(fn=>setH(c=>{const n=typeof fn==='function'?fn(c.present):fn;if(!n||n===c.present)return c;return{past:[...c.past,c.present].slice(-80),present:n,future:[]};}),[]);
+  const undo=useCallback(()=>setH(c=>c.past.length?{past:c.past.slice(0,-1),present:c.past[c.past.length-1],future:[c.present,...c.future]}:c),[]);
+  const redo=useCallback(()=>setH(c=>c.future.length?{past:[...c.past,c.present],present:c.future[0],future:c.future.slice(1)}:c),[]);
+  return{state:h.present,canUndo:h.past.length>0,canRedo:h.future.length>0,commit,undo,redo};
+}
+
+/* ---------- UI osnove ---------- */
+const btn='inline-flex items-center justify-center gap-1.5 h-8 px-2.5 rounded-lg border border-line bg-card text-xs font-semibold text-ink hover:bg-soft active:scale-[.97] transition disabled:opacity-40 disabled:pointer-events-none';
+const btnPrimary='inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-brand text-onbrand text-sm font-bold hover:opacity-90 active:scale-[.98] transition disabled:opacity-50';
+const btnGhost='inline-flex items-center justify-center gap-2 h-11 px-4 rounded-xl border border-line bg-card text-sm font-semibold text-ink hover:bg-soft transition';
+const input='w-full h-11 rounded-xl border border-line bg-card px-3 text-sm text-ink placeholder:text-muted outline-none focus:border-brand transition';
+const chip=a=>'inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border text-sm font-semibold transition '+(a?'bg-ink text-card border-ink':'bg-card text-ink border-line hover:bg-soft');
+const Label=({children})=>html`<div class="mb-1.5 text-[13px] font-semibold text-muted">${children}</div>`;
+
+function CatBadge({cat}){const c=CATS[cat]||CATS.sight;return html`<span class="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[11px] font-bold" style=${{background:c.soft,color:c.color}}><${Icon} name=${c.icon} size=${12}/>${c.label}</span>`;}
+
+function Sheet({title,subtitle,onClose,children,footer}){
+  useEffect(()=>{const k=e=>{if(e.key==='Escape')onClose();};window.addEventListener('keydown',k);const o=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{window.removeEventListener('keydown',k);document.body.style.overflow=o;};},[]);
+  return html`<div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-slate-900/45" onClick=${onClose}></div>
+    <div class="sheet-in relative w-full sm:max-w-lg max-h-[88vh] flex flex-col bg-card border border-line rounded-t-3xl sm:rounded-3xl shadow-2xl" style=${{paddingBottom:'env(safe-area-inset-bottom,0px)'}}>
+      <div class="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+        <div class="min-w-0"><h2 class="text-lg font-bold tracking-tight">${title}</h2>${subtitle&&html`<p class="text-sm text-muted mt-0.5">${subtitle}</p>`}</div>
+        <button class="h-9 w-9 grid place-items-center rounded-full hover:bg-soft text-muted" onClick=${onClose} aria-label="Zatvori"><${Icon} name="x" size=${18}/></button>
+      </div>
+      <div class="overflow-y-auto px-5 pb-5">${children}</div>
+      ${footer&&html`<div class="border-t border-line px-5 py-3">${footer}</div>`}
+    </div>
+  </div>`;
+}
+
+/* ---------- Postavke izleta ---------- */
+function SetupPanel({initial,onGenerate,onCancel,hasPlan,aiOk}){
+  const [f,setF]=useState(()=>({...DEFAULT_TRIP,...initial}));
+  const [err,setErr]=useState('');
+  const [bud,setBud]=useState(()=>initial.budget?String(toCur(initial.budget,initial.currency||'EUR')):'');
+  const set=(k,v)=>setF(x=>({...x,[k]:v}));
+  const toggleFocus=id=>set('focus',f.focus.includes(id)?f.focus.filter(i=>i!==id):[...f.focus,id]);
+  const known=findCity(f.destination);
+  const submit=()=>{
+    if(!f.destination.trim())return setErr('Upiši odredište – bilo koji grad ili mjesto u svijetu.');
+    if(toMin(f.end)-toMin(f.start)<60)return setErr('Kraj izleta mora biti barem sat vremena nakon početka.');
+    setErr('');onGenerate({...f,destination:displayName(f.destination),currency:f.currency||'EUR',budget:fromCur(bud,f.currency||'EUR')});
+  };
+  return html`<section class="pop mt-5 rounded-3xl border border-line bg-card shadow-card overflow-hidden">
+    <div class="px-5 sm:px-8 pt-6 pb-5 border-b border-line">
+      <div class="flex items-center gap-2 text-brand"><${Icon} name="globe" size=${18}/><span class="text-sm font-bold">Globalni planer izleta</span></div>
+      <h1 class="mt-3 text-[26px] sm:text-4xl font-extrabold tracking-tight leading-tight">${hasPlan?'Promijeni parametre izleta':'Kamo putuješ?'}</h1>
+      <p class="mt-2 text-[15px] text-muted max-w-xl">Upiši bilo koje mjesto na svijetu. Složit ću raspored s vremenima putovanja koji poslije možeš pomicati, odgađati i mijenjati.</p>
+    </div>
+    <div class="px-5 sm:px-8 py-6 space-y-6">
+      <div>
+        <${Label}>Odredište<//>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted"><${Icon} name="pin" size=${18}/></span>
+          <input class=${input+' pl-10 h-12 text-base'} placeholder="npr. Rim, Kyoto, Reykjavik ili Motovun" value=${f.destination} onChange=${e=>set('destination',e.target.value)} onKeyDown=${e=>{if(e.key==='Enter')submit();}} autoComplete="off"/>
+        </div>
+        <div class="mt-3 -mx-1 flex gap-2 overflow-x-auto pb-1 px-1">
+          ${QUICK.map(c=>html`<button type="button" key=${c} class=${chip(norm(f.destination)===norm(c))+' shrink-0'} onClick=${()=>set('destination',c)}>${c}</button>`)}
+        </div>
+        ${f.destination.trim()&&html`<p class="mt-2 text-xs font-medium" style=${{color:known?'#16A34A':'var(--muted)'}}>${known?'Imam detaljne lokalne preporuke za '+known.name+'.':(LIVE.on||aiOk)?'Potražit ću stvarne znamenitosti, restorane i kafiće za ovo mjesto'+(LIVE.on?' na OpenStreetMapu':' uz pomoć Claudea')+'.':'Složit ću okvirni plan prema tipičnom rasporedu grada – sve stavke možeš preimenovati i urediti.'}</p>`}
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div class="col-span-2 sm:col-span-1"><${Label}>Datum polaska<//><input type="date" class=${input} value=${f.date} onChange=${e=>set('date',e.target.value)}/></div>
+        <div><${Label}>Početak dana<//><input type="time" class=${input} value=${f.start} onChange=${e=>set('start',e.target.value)}/></div>
+        <div><${Label}>Kraj dana<//><input type="time" class=${input} value=${f.end} onChange=${e=>set('end',e.target.value)}/></div>
+      </div>
+      <div>
+        <${Label}>Trajanje<//>
+        <div class="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-soft">
+          ${[[false,'Jednodnevni izlet'],[true,'Višednevno putovanje']].map(([v,l])=>html`<button key=${l} type="button" class=${'h-10 rounded-xl text-sm font-semibold transition '+(f.multiDay===v?'bg-card text-ink shadow-card':'text-muted hover:text-ink')} onClick=${()=>set('multiDay',v)}>${l}</button>`)}
+        </div>
+        ${f.multiDay&&html`<div class="mt-3 flex items-center justify-between rounded-2xl border border-line px-4 py-2.5">
+          <span class="text-sm font-medium">Broj dana</span>
+          <div class="flex items-center gap-2">
+            <button type="button" class=${btn+' w-8 px-0'} onClick=${()=>set('days',clamp(f.days-1,2,5))} aria-label="Manje dana"><${Icon} name="minus" size=${14}/></button>
+            <span class="w-6 text-center font-bold tnum">${f.days}</span>
+            <button type="button" class=${btn+' w-8 px-0'} onClick=${()=>set('days',clamp(f.days+1,2,5))} aria-label="Više dana"><${Icon} name="plus" size=${14}/></button>
+          </div>
+        </div>`}
+      </div>
+      <div>
+        <${Label}>Način putovanja<//>
+        <div class="grid grid-cols-4 gap-2">
+          ${Object.entries(MODES).map(([k,m])=>html`<button key=${k} type="button" onClick=${()=>set('mode',k)} class=${'flex flex-col items-center justify-center gap-1.5 h-[72px] rounded-2xl border text-[11px] sm:text-xs font-bold transition '+(f.mode===k?'border-brand bg-brandsoft text-brand':'border-line bg-card text-muted hover:text-ink')}><${Icon} name=${m.icon} size=${22}/><span class="leading-tight text-center px-1">${m.short}</span></button>`)}
+        </div>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div><${Label}>Valuta<//><div class="grid grid-cols-5 gap-1 p-1 rounded-xl bg-soft">${CUR_KEYS.map(k=>html`<button key=${k} type="button" onClick=${()=>set('currency',k)} class=${'h-9 rounded-lg text-[11px] sm:text-xs font-bold transition '+((f.currency||'EUR')===k?'bg-card text-brand shadow-card':'text-muted hover:text-ink')}>${CURRENCIES[k].label}</button>`)}</div></div>
+        <div><${Label}>Ciljani budžet (neobavezno)<//><div class="relative"><input type="number" min="0" inputMode="decimal" class=${input+' pr-14 tnum'} placeholder="npr. 150" value=${bud} onChange=${e=>setBud(e.target.value)}/><span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted">${CURRENCIES[f.currency||'EUR'].sym}</span></div></div>
+      </div>
+      <div>
+        <${Label}>Fokus izleta (neobavezno)<//>
+        <div class="flex flex-wrap gap-2">
+          ${FOCUS.map(x=>html`<button key=${x.id} type="button" class=${chip(f.focus.includes(x.id))} onClick=${()=>toggleFocus(x.id)}><${Icon} name=${x.icon} size=${15}/>${x.label}</button>`)}
+        </div>
+      </div>
+      ${err&&html`<div class="flex items-center gap-2 rounded-xl bg-dangersoft text-danger px-3 py-2.5 text-sm font-medium"><${Icon} name="alert" size=${16}/>${err}</div>`}
+      <div class="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+        ${hasPlan&&html`<button class=${btnGhost} onClick=${onCancel}>Odustani</button>`}
+        <button class=${btnPrimary+' h-12 text-[15px]'} onClick=${submit}><${Icon} name="sparkles" size=${18}/>Generiraj pametni plan</button>
+      </div>
+    </div>
+  </section>`;
+}
+
+function TripBar({st,onEdit,onRegenerate,onMode,onAi}){
+  const t=st.trip;
+  return html`<section class="mt-5 rounded-3xl border border-line bg-card shadow-card p-4 sm:p-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight truncate">${displayName(t.destination)}</h1>
+        <p class="mt-1 text-sm text-muted flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span class="inline-flex items-center gap-1.5"><${Icon} name="calendar" size=${14}/>${fmtDate(t.date)}${st.days.length>1?' – '+fmtDate(addDays(t.date,st.days.length-1)):''}</span>
+          <span class="inline-flex items-center gap-1.5 tnum"><${Icon} name="clock" size=${14}/>${t.start}–${t.end}</span>
+        </p>
+      </div>
+      <div class="flex gap-2">
+        ${onAi&&html`<button class=${btn+' h-9 border-brand text-brand'} onClick=${onAi} title="Zatraži od Claudea stvarne lokacije za ovo mjesto"><${Icon} name="sparkles" size=${14}/><span>Stvarne lokacije</span></button>`}
+        <button class=${btn+' h-9'} onClick=${onRegenerate} title="Složi novi prijedlog s istim parametrima"><${Icon} name="refresh" size=${14}/><span>Novi prijedlog</span></button>
+        <button class=${btn+' h-9'} onClick=${onEdit}><${Icon} name="sliders" size=${14}/><span>Parametri</span></button>
+      </div>
+    </div>
+    <div class="mt-4 grid grid-cols-4 gap-1 p-1 rounded-xl bg-soft" role="radiogroup" aria-label="Način putovanja">
+      ${Object.entries(MODES).map(([k,m])=>html`<button key=${k} role="radio" aria-checked=${t.mode===k} onClick=${()=>onMode(k)} class=${'h-9 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold transition '+(t.mode===k?'bg-card text-brand shadow-card':'text-muted hover:text-ink')}><${Icon} name=${m.icon} size=${16}/><span class="hidden sm:inline">${m.short}</span></button>`)}
+    </div>
+    ${t.focus.length>0&&html`<div class="mt-3 flex flex-wrap gap-1.5">${t.focus.map(id=>{const f=FOCUS.find(x=>x.id===id);return f&&html`<span key=${id} class="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-soft text-[11px] font-semibold text-muted"><${Icon} name=${f.icon} size=${12}/>${f.label}</span>`;})}</div>`}
+  </section>`;
+}
+
+/* ---------- Vremenska crta ---------- */
+function Connector({travel,onAdd,cur}){
+  return html`<div class="relative flex items-center gap-2 py-2 pl-[52px]">
+    <div class="absolute left-[27px] top-0 bottom-0 border-l-2 border-dashed border-line"></div>
+    <span class="inline-flex flex-wrap items-center gap-x-1.5 min-h-[28px] py-1 px-3 rounded-full border border-line bg-card text-xs font-semibold text-muted tnum">
+      <${Icon} name=${travel.icon} size=${13}/>${fmtD(travel.min)} ${travel.label}<span class="opacity-60">· ${fmtKm(travel.km)}</span><span class=${travel.fare>0?"text-ink":"opacity-60"}>· ${travel.fare>0?"~":""}${money(travel.fare||0,cur)}</span>
+    </span>
+    <button class="h-7 w-7 grid place-items-center rounded-full border border-dashed border-line text-muted hover:text-brand hover:border-brand transition" onClick=${onAdd} title="Dodaj lokaciju ovdje" aria-label="Dodaj lokaciju ovdje"><${Icon} name="plus" size=${14}/></button>
+  </div>`;
+}
+
+function EditForm({s,onSave,onCancel,cur}){
+  const [v,setV]=useState({name:s.name,district:s.district||'',cat:s.cat,duration:s.duration,note:s.note||'',cost:String(toCur(s.cost||0,cur))});
+  const set=(k,x)=>setV(o=>({...o,[k]:x}));
+  return html`<div class="space-y-3">
+    <div><${Label}>Naziv<//><input class=${input} value=${v.name} onChange=${e=>set('name',e.target.value)}/></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><${Label}>Kvart<//><input class=${input} value=${v.district} onChange=${e=>set('district',e.target.value)} placeholder="npr. Stari grad"/></div>
+      <div><${Label}>Trajanje (min)<//><input type="number" min="5" max="600" step="5" class=${input+' tnum'} value=${v.duration} onChange=${e=>set('duration',e.target.value)}/></div>
+    </div>
+    <div><${Label}>Procijenjeni trošak (${CURRENCIES[cur].sym})<//><div class="flex gap-2"><input type="number" min="0" step="any" inputMode="decimal" class=${input+' tnum'} value=${v.cost} onChange=${e=>set('cost',e.target.value)}/><button type="button" class=${chip(Number(v.cost)===0)+' h-11 shrink-0'} onClick=${()=>set('cost','0')}>Besplatno</button></div></div>
+    <div><${Label}>Kategorija<//><div class="flex flex-wrap gap-1.5">${Object.entries(CATS).map(([k,c])=>html`<button key=${k} type="button" onClick=${()=>set('cat',k)} class=${'inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border text-xs font-bold transition '+(v.cat===k?'':'border-line text-muted')} style=${v.cat===k?{background:c.soft,color:c.color,borderColor:c.color}:null}><${Icon} name=${c.icon} size=${13}/>${c.label}</button>`)}</div></div>
+    <div><${Label}>Bilješka<//><textarea rows="2" class=${input+' h-auto py-2.5 resize-none'} value=${v.note} onChange=${e=>set('note',e.target.value)} placeholder="npr. Kupiti ulaznice, nazvati za rezervaciju…"></textarea></div>
+    <div class="flex justify-end gap-2">
+      <button class=${btn+' h-9 px-3'} onClick=${onCancel}>Odustani</button>
+      <button class=${btn+' h-9 px-3 bg-brand text-onbrand border-brand hover:bg-brand hover:opacity-90'} onClick=${()=>onSave({...v,name:v.name.trim()||s.name,duration:clamp(Math.round(Number(v.duration)||s.duration),5,600),cost:fromCur(v.cost,cur)})}><${Icon} name="check" size=${14}/>Spremi</button>
+    </div>
+  </div>`;
+}
+
+function StopCard({s,i,count,dayCount,day,sel,editing,dragState,act,tripEnd,cur,dest}){
+  const ml=mapsLinks(s,dest);
+  const c=CATS[s.cat]||CATS.sight;const isOver=dragState.over===i&&dragState.from!==null&&dragState.from!==i;
+  return html`<article id=${'card-'+s.id} draggable=${!editing} onClick=${()=>act.select(s.id)}
+    onDragStart=${e=>{e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(i));}catch(_){}act.drag({from:i,over:i});}}
+    onDragOver=${e=>{e.preventDefault();if(dragState.over!==i)act.drag({...dragState,over:i});}}
+    onDrop=${e=>{e.preventDefault();if(dragState.from!==null)act.move(dragState.from,i);act.drag({from:null,over:null});}}
+    onDragEnd=${()=>act.drag({from:null,over:null})}
+    class=${'relative rounded-2xl border bg-card shadow-card transition '+(sel?'border-brand':'border-line')+(dragState.from===i?' opacity-50':'')}
+    style=${isOver?{boxShadow:'0 0 0 3px var(--brand-soft)',borderColor:'var(--brand)'}:null}>
+    <div class="flex gap-3 sm:gap-4 p-4">
+      <div class="flex flex-col items-center gap-1.5 w-11 shrink-0">
+        <div class="h-11 w-11 rounded-xl grid place-items-center" style=${{background:c.soft,color:c.color}}><${Icon} name=${c.icon} size=${20}/></div>
+        <span class="text-[11px] font-bold text-muted tnum">${i+1}/${count}</span>
+        <span class="hidden md:grid mt-1 text-muted cursor-grab active:cursor-grabbing" title="Povuci za premještanje"><${Icon} name="grip" size=${16}/></span>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <span class="text-[15px] font-extrabold tnum tracking-tight">${fmtT(s.start)}–${fmtT(s.end)}</span>
+          <span class="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-soft text-[11px] font-bold text-muted tnum"><${Icon} name="clock" size=${12}/>${fmtD(s.duration)}</span>
+          <button onClick=${e=>{e.stopPropagation();act.edit(s.id);}} title="Uredi procijenjeni trošak" class="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[11px] font-bold tnum" style=${s.cost>0?{background:'var(--soft)',color:'var(--ink)'}:{background:'rgba(22,163,74,.14)',color:'#16A34A'}}><${Icon} name="wallet" size=${12}/>${s.cost>0?money(s.cost,cur):'Besplatno'}</button>
+          <${CatBadge} cat=${s.cat}/>
+          ${s.delay>0&&html`<button onClick=${e=>{e.stopPropagation();act.clearDelay(s.id);}} class="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-warnsoft text-warn text-[11px] font-bold" title="Ukloni odgodu">Odgođeno +${fmtD(s.delay)}<${Icon} name="x" size=${11}/></button>`}
+        </div>
+        ${s.over&&html`<div class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-dangersoft text-danger px-2 py-1 text-[11px] font-bold"><${Icon} name="alert" size=${13}/>Završava nakon planiranog kraja (${tripEnd})</div>`}
+        ${editing?html`<div class="mt-3" onClick=${e=>e.stopPropagation()}><${EditForm} s=${s} cur=${cur} onSave=${p=>act.save(s.id,p)} onCancel=${act.cancelEdit}/></div>`:html`<div>
+          <h3 class="mt-2 text-[17px] font-bold leading-snug">${s.name}</h3>
+          ${s.district&&html`<div class="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold text-muted"><${Icon} name="pin" size=${12}/>${s.district}${s.flags&&s.flags.includes('h')?html`<span class="ml-1.5 inline-flex items-center gap-1 text-brand"><${Icon} name="gem" size=${12}/>Skriveni dragulj</span>`:''}</div>`}
+          ${s.desc&&html`<p class="mt-1.5 text-sm text-muted leading-relaxed">${s.desc}</p>`}
+          <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold" onClick=${e=>e.stopPropagation()}>
+            <a class="inline-flex items-center gap-1 text-brand hover:underline" href=${ml.google} target="_blank" rel="noopener"><${Icon} name="nav" size=${12}/>Google Karte</a>
+            <a class="inline-flex items-center gap-1 text-brand hover:underline" href=${ml.apple} target="_blank" rel="noopener"><${Icon} name="map" size=${12}/>Apple Karte</a>
+            ${hasLL(s)&&html`<span class="text-muted font-semibold">GPS lokacija</span>`}
+          </div>
+          ${s.tip&&html`<div class="mt-2.5 flex gap-2 rounded-xl bg-soft px-3 py-2 text-[13px] leading-snug"><span class="mt-px text-warn"><${Icon} name="bulb" size=${15}/></span><span><b class="font-bold">Lokalni savjet:</b> ${s.tip}</span></div>`}
+          ${s.note&&html`<div class="mt-2 flex gap-2 rounded-xl border border-dashed border-line px-3 py-2 text-[13px]"><span class="text-muted mt-px"><${Icon} name="pencil" size=${14}/></span><span>${s.note}</span></div>`}
+          <div class="mt-3 flex flex-wrap items-center gap-1.5" onClick=${e=>e.stopPropagation()}>
+            <div class="inline-flex items-center h-8 rounded-lg border border-line overflow-hidden text-xs font-bold">
+              <span class="px-2 text-muted hidden sm:inline">Trajanje</span>
+              <span class="px-2 text-muted sm:hidden"><${Icon} name="clock" size=${13}/></span>
+              ${[[-15,'−15m'],[15,'+15m'],[30,'+30m']].map(([m,l])=>html`<button key=${l} class="h-8 px-2 border-l border-line hover:bg-soft tnum disabled:opacity-40" disabled=${m<0&&s.duration<=15} onClick=${()=>act.adjust(s.id,m)}>${l}</button>`)}
+            </div>
+            <div class="inline-flex items-center h-8 rounded-lg border border-line overflow-hidden text-xs font-bold">
+              <span class="px-2 text-warn">Odgodi</span>
+              ${[[15,'+15m'],[30,'+30m'],[60,'+1h']].map(([m,l])=>html`<button key=${l} class="h-8 px-2 border-l border-line hover:bg-warnsoft tnum" onClick=${()=>act.delay(s.id,m)}>${l}</button>`)}
+            </div>
+          </div>
+          <div class="mt-1.5 flex flex-wrap items-center gap-1.5" onClick=${e=>e.stopPropagation()}>
+            <button class=${btn+' w-8 px-0'} disabled=${i===0} onClick=${()=>act.move(i,i-1)} title="Pomakni gore" aria-label="Pomakni gore"><${Icon} name="arrowUp" size=${14}/></button>
+            <button class=${btn+' w-8 px-0'} disabled=${i===count-1} onClick=${()=>act.move(i,i+1)} title="Pomakni dolje" aria-label="Pomakni dolje"><${Icon} name="arrowDown" size=${14}/></button>
+            <button class=${btn} onClick=${()=>act.alt(s.id)} title="Predloži alternativu"><${Icon} name="refresh" size=${14}/><span>Alternativa</span></button>
+            <button class=${btn} onClick=${()=>act.later(s.id)} title="Odgodi za kasnije"><${Icon} name="archive" size=${14}/><span>Za kasnije</span></button>
+            ${dayCount>1&&day<dayCount-1&&html`<button class=${btn} onClick=${()=>act.nextDay(s.id)} title="Prebaci na sljedeći dan"><${Icon} name="chevRight" size=${14}/><span class="hidden sm:inline">Sljedeći dan</span></button>`}
+            <button class=${btn+' w-8 px-0'} onClick=${()=>act.dup(s.id)} title="Dupliciraj" aria-label="Dupliciraj"><${Icon} name="copy" size=${14}/></button>
+            <button class=${btn+' w-8 px-0'} onClick=${()=>act.edit(s.id)} title="Uredi" aria-label="Uredi"><${Icon} name="pencil" size=${14}/></button>
+            <button class=${btn+' w-8 px-0 hover:bg-dangersoft hover:text-danger'} onClick=${()=>act.remove(s.id)} title="Obriši" aria-label="Obriši"><${Icon} name="trash" size=${14}/></button>
+          </div></div>`}
+      </div>
+    </div>
+  </article>`;
+}
+
+/* ---------- Widgeti ---------- */
+function Widget({id,badge,collapsed,onToggle,children}){
+  const m=WIDGET_META[id];
+  return html`<section class="rounded-2xl border border-line bg-card shadow-card">
+    <button class="w-full flex items-center justify-between gap-2 px-4 h-12 text-left" onClick=${onToggle} aria-expanded=${!collapsed}>
+      <span class="flex items-center gap-2 text-sm font-bold"><span class="text-brand"><${Icon} name=${m.icon} size=${16}/></span>${m.title}${badge!=null&&badge!==''&&html`<span class="ml-1 h-5 min-w-[20px] px-1.5 grid place-items-center rounded-full bg-brandsoft text-brand text-[11px] font-bold tnum">${badge}</span>`}</span>
+      <span class="text-muted"><${Icon} name=${collapsed?'chevDown':'chevUp'} size=${16}/></span>
+    </button>
+    ${!collapsed&&html`<div class="px-4 pb-4">${children}</div>`}
+  </section>`;
+}
+function SummaryWidget({sched,trip,sel,onSelect}){
+  const s0=toMin(trip.start),e0=toMin(trip.end);
+  const active=sched.reduce((a,s)=>a+s.duration,0),travel=sched.reduce((a,s)=>a+(s.travel?s.travel.min:0),0);
+  const last=sched.length?sched[sched.length-1].end:s0,slack=e0-last,total=Math.max(e0,last)-s0||1;
+  const pct=v=>(clamp((v-s0)/total,0,1)*100)+'%';
+  const byCat=Object.keys(CATS).map(k=>[k,sched.filter(s=>s.cat===k).reduce((a,s)=>a+s.duration,0)]).filter(x=>x[1]>0);
+  const Stat=(label,value,tone)=>html`<div class="rounded-xl bg-soft px-3 py-2.5"><div class="text-[11px] font-semibold text-muted">${label}</div><div class=${'mt-0.5 text-lg font-extrabold tnum '+(tone==='bad'?'text-danger':'')}>${value}</div></div>`;
+  return html`<div>
+    <div class="grid grid-cols-2 gap-2">
+      ${Stat('Razgledavanje',fmtD(active))}${Stat('Putovanje',fmtD(travel))}${Stat('Broj lokacija',sched.length)}${Stat(slack>=0?'Slobodno vrijeme':'Prekoračenje',fmtD(Math.abs(slack)),slack<0?'bad':'')}
+    </div>
+    <div class="mt-4">
+      <div class="relative h-4 rounded-full bg-soft overflow-hidden">
+        ${sched.map(s=>html`<${React.Fragment} key=${s.id}>
+          ${s.travel&&html`<span class="absolute inset-y-1" style=${{left:pct(s.start-(s.delay||0)-s.travel.min),width:pct(s0+s.travel.min),background:'var(--muted)',opacity:.35}}></span>`}
+          <button title=${s.name+' · '+fmtT(s.start)} onClick=${()=>onSelect(s.id)} class="absolute inset-y-0 transition" style=${{left:pct(s.start),width:pct(s0+s.duration),background:CATS[s.cat].color,opacity:sel&&sel!==s.id?.45:1,borderRadius:3}}></button>
+        <//>`)}
+        ${last>e0&&html`<span class="absolute inset-y-0 w-0.5 bg-ink" style=${{left:pct(e0)}} title="Planirani kraj"></span>`}
+      </div>
+      <div class="mt-1.5 flex justify-between text-[11px] font-semibold text-muted tnum"><span>${trip.start}</span><span>${last>e0?'kraj '+trip.end+' · stvarni '+fmtT(last):'završetak '+fmtT(last)}</span></div>
+    </div>
+    ${byCat.length>0&&html`<div class="mt-4 space-y-1.5">${byCat.map(([k,m])=>html`<div key=${k} class="flex items-center gap-2 text-xs"><span class="w-24 shrink-0 font-semibold text-muted truncate">${CATS[k].label}</span><span class="flex-1 h-1.5 rounded-full bg-soft overflow-hidden"><span class="block h-full rounded-full" style=${{width:(m/active*100)+'%',background:CATS[k].color}}></span></span><span class="w-16 text-right font-bold tnum">${fmtD(m)}</span></div>`)}</div>`}
+  </div>`;
+}
+function RouteWidget({sched,sel,onSelect,trip}){
+  if(!sched.length)return html`<p class="text-sm text-muted">Ruta će se pojaviti kad dodaš lokacije.</p>`;
+  const W=320,H=220,Pd=26;const xs=sched.map(s=>s.x),ys=sched.map(s=>s.y);
+  const minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys);
+  const sx=Math.max(maxx-minx,.2),sy=Math.max(maxy-miny,.2),k=Math.min((W-2*Pd)/sx,(H-2*Pd)/sy);
+  const ox=(W-sx*k)/2,oy=(H-sy*k)/2;
+  const pt=s=>[ox+(s.x-minx)*k+(maxx===minx?(sx*k)/2-.1*k:0),H-(oy+(s.y-miny)*k)-(maxy===miny?-(sy*k)/2+.1*k:0)];
+  const pts=sched.map(pt);const km=sched.reduce((a,s)=>a+(s.travel?s.travel.km:0),0);const selS=sched.find(s=>s.id===sel);
+  return html`<div>
+    <div class="rounded-xl bg-soft overflow-hidden">
+      <svg viewBox=${'0 0 '+W+' '+H} class="w-full h-auto block" role="img" aria-label="Shematski prikaz rute">
+        <polyline points=${pts.map(p=>p.join(',')).join(' ')} fill="none" style=${{stroke:'var(--brand)'}} strokeWidth="2.5" strokeDasharray="5 6" strokeLinecap="round"/>
+        ${sched.map((s,i)=>i>0&&html`<text key=${'l'+s.id} x=${(pts[i-1][0]+pts[i][0])/2} y=${(pts[i-1][1]+pts[i][1])/2-6} textAnchor="middle" fontSize="9" fontWeight="700" style=${{fill:'var(--muted)'}}>${s.travel.min}′ · ${fmtDist(s.travel.km)}</text>`)}
+        ${sched.map((s,i)=>html`<g key=${s.id} onClick=${()=>onSelect(s.id)} style=${{cursor:'pointer'}}>
+          ${sel===s.id&&html`<circle cx=${pts[i][0]} cy=${pts[i][1]} r="17" style=${{fill:CATS[s.cat].soft,stroke:CATS[s.cat].color}} strokeWidth="1.5"/>`}
+          <circle cx=${pts[i][0]} cy=${pts[i][1]} r="11" style=${{fill:CATS[s.cat].color,stroke:'var(--card)'}} strokeWidth="2.5"/>
+          <text x=${pts[i][0]} y=${pts[i][1]+3.5} textAnchor="middle" fontSize="10" fontWeight="800" style=${{fill:'#fff'}}>${i+1}</text>
+        </g>`)}
+      </svg>
+    </div>
+    <div class="mt-2 flex items-center justify-between text-xs text-muted font-semibold"><span>Ukupno oko ${fmtKm(km)}</span><span>Dodirni točku za odabir</span></div>
+    ${routeLink(sched,trip)&&html`<a class=${btn+' mt-3 w-full h-10'} href=${routeLink(sched,trip)} target="_blank" rel="noopener"><${Icon} name="nav" size=${14}/>Otvori cijelu rutu u Google Kartama</a>`}
+    ${selS&&html`<div class="mt-2 rounded-xl border border-line px-3 py-2 text-sm"><b>${sched.indexOf(selS)+1}. ${selS.name}</b><div class="text-xs text-muted tnum">${fmtT(selS.start)}–${fmtT(selS.end)}${selS.district?' · '+selS.district:''}</div></div>`}
+  </div>`;
+}
+function BudgetWidget({st,cur,onBudget}){
+  const c=useMemo(()=>tripCosts(st),[st]);const C=CURRENCIES[cur]||CURRENCIES.EUR;const budget=st.trip.budget||0;
+  const [txt,setTxt]=useState(budget?String(toCur(budget,cur)):'');
+  useEffect(()=>{setTxt(budget?String(toCur(budget,cur)):'');},[budget,cur]);
+  const commitB=()=>{const b=fromCur(txt,cur);if(Math.abs(b-budget)>0.001)onBudget(b);};
+  const ratio=budget>0?c.total/budget:0;const tone=ratio>1?'var(--danger)':ratio>0.9?'var(--warn)':'var(--brand)';
+  const rows=[['Ulaznice i aktivnosti',c.tickets,'#6366F1','landmark'],['Hrana i piće',c.food,'#EA580C','utensils'],['Prijevoz',c.transport,'#0891B2','bus']];
+  return html`<div>
+    <div class="flex items-end justify-between gap-3">
+      <div><div class="text-[11px] font-semibold text-muted">Ukupni procijenjeni trošak</div><div class="text-3xl font-extrabold tnum tracking-tight">${money(c.total,cur)}</div></div>
+      ${st.days.length>1&&html`<div class="text-right text-[11px] font-semibold text-muted tnum leading-relaxed">${c.perDay.map((v,i)=>html`<div key=${i}>${i+1}. dan: ${money(v,cur)}</div>`)}</div>`}
+    </div>
+    <div class="mt-3"><${Label}>Ciljani budžet<//><div class="relative"><input type="number" min="0" inputMode="decimal" class=${input+' h-10 pr-14 tnum'} placeholder="Upiši iznos" value=${txt} onChange=${e=>setTxt(e.target.value)} onBlur=${commitB} onKeyDown=${e=>{if(e.key==='Enter')e.target.blur();}}/><span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted">${C.sym}</span></div></div>
+    ${budget>0&&html`<div class="mt-3">
+      <div class="h-2.5 rounded-full bg-soft overflow-hidden"><div class="h-full rounded-full transition-all" style=${{width:Math.min(100,ratio*100)+'%',background:tone}}></div></div>
+      <div class="mt-1.5 flex justify-between text-xs font-bold tnum" style=${{color:ratio>0.9?tone:'var(--muted)'}}><span>${Math.round(ratio*100)} % budžeta</span><span>${ratio>1?'Prekoračenje '+money(c.total-budget,cur):'Preostaje '+money(budget-c.total,cur)}</span></div>
+    </div>`}
+    <div class="mt-4 space-y-2.5">${rows.map(([l,v,col,ic])=>html`<div key=${l}>
+      <div class="flex items-center gap-2.5 text-sm"><span class="h-7 w-7 grid place-items-center rounded-lg shrink-0" style=${{background:col+'22',color:col}}><${Icon} name=${ic} size=${14}/></span><span class="flex-1 font-semibold">${l}</span><span class="font-bold tnum">${money(v,cur)}</span></div>
+      <div class="ml-[38px] mt-1 h-1.5 rounded-full bg-soft overflow-hidden"><div class="h-full rounded-full" style=${{width:(c.total?v/c.total*100:0)+'%',background:col}}></div></div>
+    </div>`)}</div>
+    <p class="mt-3 text-[11px] text-muted leading-snug">Cijene i tečajevi su okvirne procjene${cur!=='EUR'?' (1 € ≈ '+C.fmt(C.rate)+')':''}. Trošak lokacije promijeni dodirom na oznaku cijene na kartici.</p>
+  </div>`;
+}
+function LaterWidget({later,onRestore,onDrop,dayLabel}){
+  if(!later.length)return html`<p class="text-sm text-muted leading-relaxed">Ovdje se spremaju aktivnosti koje ne stigneš obaviti. Na kartici odaberi <b class="text-ink">Za kasnije</b> pa ih vrati u plan kad ti odgovara.</p>`;
+  return html`<ul class="space-y-2">${later.map(s=>html`<li key=${s.id} class="flex items-center gap-2.5 rounded-xl border border-line px-3 py-2">
+    <span class="h-8 w-8 grid place-items-center rounded-lg shrink-0" style=${{background:CATS[s.cat].soft,color:CATS[s.cat].color}}><${Icon} name=${CATS[s.cat].icon} size=${15}/></span>
+    <div class="min-w-0 flex-1"><div class="text-sm font-bold truncate">${s.name}</div><div class="text-[11px] text-muted font-semibold">${fmtD(s.duration)}</div></div>
+    <button class=${btn} onClick=${()=>onRestore(s.id)} title=${'Vrati u '+dayLabel}><${Icon} name="restore" size=${14}/><span>Vrati</span></button>
+    <button class=${btn+' w-8 px-0 hover:bg-dangersoft hover:text-danger'} onClick=${()=>onDrop(s.id)} aria-label="Trajno ukloni"><${Icon} name="trash" size=${14}/></button>
+  </li>`)}</ul>`;
+}
+function ContextWidget({trip,check,setCheck}){
+  const {tips,items}=useMemo(()=>contextFor(trip),[trip]);const [txt,setTxt]=useState('');
+  const all=[...items,...check.custom];const done=all.filter(x=>check.done[x]).length;
+  const toggle=x=>setCheck(c=>({...c,done:{...c.done,[x]:!c.done[x]}}));
+  const add=()=>{const v=txt.trim();if(!v||all.includes(v))return;setCheck(c=>({...c,custom:[...c.custom,v]}));setTxt('');};
+  return html`<div>
+    <ul class="space-y-1.5">${tips.map(t=>html`<li key=${t} class="flex gap-2 text-[13px] leading-snug"><span class="text-brand mt-0.5"><${Icon} name="globe" size=${13}/></span>${t}</li>`)}</ul>
+    <div class="mt-4 flex items-center justify-between"><span class="text-xs font-bold text-muted">Check-lista</span><span class="text-xs font-bold tnum">${done}/${all.length}</span></div>
+    <div class="mt-1.5 h-1.5 rounded-full bg-soft overflow-hidden"><div class="h-full bg-brand rounded-full transition-all" style=${{width:(all.length?done/all.length*100:0)+'%'}}></div></div>
+    <ul class="mt-3 space-y-0.5">${all.map(x=>html`<li key=${x}><label class="flex items-center gap-2.5 py-1.5 cursor-pointer text-sm">
+      <span class=${'h-5 w-5 grid place-items-center rounded-md border transition '+(check.done[x]?'bg-brand border-brand text-onbrand':'border-line')}>${check.done[x]&&html`<${Icon} name="check" size=${13} strokeWidth=${3}/>`}</span>
+      <input type="checkbox" class="sr-only" checked=${!!check.done[x]} onChange=${()=>toggle(x)}/>
+      <span class=${check.done[x]?'line-through text-muted':''}>${x}</span>
+      ${check.custom.includes(x)&&html`<button class="ml-auto text-muted hover:text-danger" onClick=${e=>{e.preventDefault();setCheck(c=>({...c,custom:c.custom.filter(y=>y!==x)}));}} aria-label="Ukloni stavku"><${Icon} name="x" size=${14}/></button>`}
+    </label></li>`)}</ul>
+    <div class="mt-2 flex gap-2"><input class=${input+' h-9'} placeholder="Dodaj stavku…" value=${txt} onChange=${e=>setTxt(e.target.value)} onKeyDown=${e=>{if(e.key==='Enter')add();}}/><button class=${btn+' h-9 w-9 px-0'} onClick=${add} aria-label="Dodaj stavku"><${Icon} name="plus" size=${16}/></button></div>
+  </div>`;
+}
+function CustomizePanel({widgets,setWidgets,onClose}){
+  const mv=(i,d)=>setWidgets(w=>{const b=[...w];const j=i+d;if(j<0||j>=b.length)return w;[b[i],b[j]]=[b[j],b[i]];return b;});
+  return html`<div class="pop rounded-2xl border border-brand bg-card p-3">
+    <div class="flex items-center justify-between px-1 pb-2"><span class="text-sm font-bold">Prilagodi bočnu traku</span><button class=${btn} onClick=${onClose}>Gotovo</button></div>
+    ${widgets.map((w,i)=>html`<div key=${w.id} class="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-soft">
+      <button class=${btn+' w-8 px-0'} onClick=${()=>setWidgets(ws=>ws.map(x=>x.id===w.id?{...x,on:!x.on}:x))} aria-label=${w.on?'Sakrij':'Prikaži'}><${Icon} name=${w.on?'eye':'eyeOff'} size=${14}/></button>
+      <span class=${'flex-1 text-sm font-semibold '+(w.on?'':'text-muted line-through')}>${WIDGET_META[w.id].title}</span>
+      <button class=${btn+' w-8 px-0'} disabled=${i===0} onClick=${()=>mv(i,-1)} aria-label="Gore"><${Icon} name="arrowUp" size=${14}/></button>
+      <button class=${btn+' w-8 px-0'} disabled=${i===widgets.length-1} onClick=${()=>mv(i,1)} aria-label="Dolje"><${Icon} name="arrowDown" size=${14}/></button>
+    </div>`)}
+  </div>`;
+}
+
+/* ---------- Dodavanje lokacije ---------- */
+function AddSheet({st,day,index,onAdd,onClose}){
+  const cur=st.trip.currency||'EUR';
+  const [tab,setTab]=useState('smart');const [filter,setFilter]=useState('all');
+  const [v,setV]=useState({name:'',cat:'sight',duration:45,note:'',district:'',cost:''});
+  const stops=st.days[day]||[];const ref=stops[index-1]||stops[index]||{x:0,y:0};
+  const city=findCity(st.trip.destination);const label=displayName(st.trip.destination);
+  const used=new Set([].concat(...st.days,st.later).map(s=>s.name));
+  const sugg=useMemo(()=>{const pool=getPool(st.trip.destination).filter(p=>!used.has(p.name));let list=pool.filter(p=>!city||!p.generic);if(list.length<6)list=list.concat(pool.filter(p=>city&&p.generic));return list.sort((a,b)=>dist(a,ref)-dist(b,ref));},[st,day,index]);
+  const shown=sugg.filter(p=>filter==='all'||p.cat===filter);
+  const addCustom=()=>{if(!v.name.trim())return;onAdd({id:uid(),name:v.name.trim(),cat:v.cat,duration:clamp(Math.round(Number(v.duration)||45),5,600),district:v.district.trim(),desc:'',tip:'',note:v.note.trim(),cost:fromCur(v.cost,cur),delay:0,x:ref.x+(Math.random()-.5)*.6,y:ref.y+(Math.random()-.5)*.6,flags:'',generic:false});};
+  const [dc,setDc]=useState('food');const [disc,setDisc]=useState({});
+  const runDisc=async c=>{setDc(c);if(disc[c]&&disc[c].status!=='fail')return;if(!LIVE.on){setDisc(o=>({...o,[c]:{status:'fail',why:'off'}}));return;}
+    setDisc(o=>({...o,[c]:{status:'loading'}}));try{const items=(await discoverNear(ref,st.trip,[c])).filter(p=>!used.has(p.name)).slice(0,20);setDisc(o=>({...o,[c]:{status:items.length?'ok':'empty',items}}));}catch(e){setDisc(o=>({...o,[c]:{status:'fail'}}));}};
+  useEffect(()=>{if(tab==='live'&&!disc[dc])runDisc(dc);},[tab]);
+  const DISC=[['food','Restorani','utensils'],['coffee','Kafići','coffee'],['culture','Muzeji','book'],['nature','Parkovi i priroda','tree'],['sight','Znamenitosti','landmark']];
+  const placeRow=p=>{const tr=travelInfo(ref,p,st.trip.mode);return html`<li key=${p.name} class="flex gap-3 rounded-2xl border border-line p-3">
+      <span class="h-10 w-10 grid place-items-center rounded-xl shrink-0" style=${{background:CATS[p.cat].soft,color:CATS[p.cat].color}}><${Icon} name=${CATS[p.cat].icon} size=${18}/></span>
+      <div class="min-w-0 flex-1"><div class="text-sm font-bold leading-snug">${p.name}</div><p class="text-xs text-muted mt-0.5 leading-snug">${p.desc}${p.district?' · '+p.district:''}</p>
+        <div class="mt-1 text-[11px] font-semibold text-muted tnum">${fmtD(tr.min)} ${tr.label} · ${fmtDist(dist(ref,p))} od susjedne stanice · ${(p.cost!=null?p.cost:estimateCost(p,levelOf(findCity(st.trip.destination))))>0?money(p.cost!=null?p.cost:estimateCost(p,levelOf(findCity(st.trip.destination))),cur):'besplatno'}</div></div>
+      <button class=${btn+' self-center bg-brand text-onbrand border-brand hover:bg-brand hover:opacity-90'} onClick=${()=>onAdd(toStop({...p,cost:p.cost!=null?p.cost:estimateCost(p,levelOf(findCity(st.trip.destination)))}))}><${Icon} name="plus" size=${14}/>Dodaj</button>
+    </li>`;};
+  const dState=disc[dc];
+  const liveView=html`<div>
+    <div class="-mx-1 px-1 flex gap-1.5 overflow-x-auto pb-2">${DISC.map(([k,l,ic])=>html`<button key=${k} class=${chip(dc===k)+' h-8 text-xs shrink-0'} onClick=${()=>runDisc(k)}><${Icon} name=${ic} size=${13}/>${l}</button>`)}</div>
+    ${!dState||dState.status==='loading'?html`<div class="py-8 flex flex-col items-center gap-3 text-sm text-muted"><div class="h-8 w-8 rounded-full border-4 border-line animate-spin" style=${{borderTopColor:'var(--brand)'}}></div>Tražim stvarna mjesta u blizini prethodne stanice…</div>`
+    :dState.status==='ok'?html`<ul class="mt-1 space-y-2">${dState.items.map(placeRow)}</ul>`
+    :html`<div><p class="rounded-xl bg-soft px-3 py-2.5 text-xs text-muted leading-snug">${dState.status==='empty'?'U blizini nema novih mjesta te vrste.':dState.why==='off'?'Pretraga uživo isključena je u Postavkama.':'Pretraga uživo trenutačno nije dostupna (nema mreže ili je OpenStreetMap zauzet).'} Evo prijedloga iz ugrađene baze:</p>
+      <ul class="mt-2 space-y-2">${sugg.filter(p=>p.cat===dc).slice(0,10).map(placeRow)}</ul></div>`}
+    <p class="mt-3 text-[10px] text-muted">Podaci © OpenStreetMap suradnici</p>
+  </div>`;
+  return html`<${Sheet} title="Dodaj lokaciju" subtitle=${'Umeće se kao '+(index+1)+'. stanica'+(st.days.length>1?' ('+(day+1)+'. dan)':'')} onClose=${onClose}>
+    <div class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-soft mb-4">
+      ${[['smart','Prijedlozi'],['live','Otkrij u blizini'],['custom','Vlastita']].map(([k,l])=>html`<button key=${k} class=${'h-9 rounded-lg text-[13px] font-bold truncate px-2 transition '+(tab===k?'bg-card shadow-card text-ink':'text-muted')} onClick=${()=>setTab(k)}>${l}</button>`)}
+    </div>
+    ${tab==='live'?liveView:tab==='smart'?html`<div>
+      <div class="-mx-1 px-1 flex gap-1.5 overflow-x-auto pb-2">
+        <button class=${chip(filter==='all')+' h-8 text-xs shrink-0'} onClick=${()=>setFilter('all')}>Sve</button>
+        ${Object.entries(CATS).map(([k,c])=>html`<button key=${k} class=${chip(filter===k)+' h-8 text-xs shrink-0'} onClick=${()=>setFilter(k)}><${Icon} name=${c.icon} size=${13}/>${c.label}</button>`)}
+      </div>
+      ${shown.length===0?html`<p class="py-6 text-center text-sm text-muted">U ovoj kategoriji nema više prijedloga. Dodaj vlastitu lokaciju.</p>`:html`<ul class="mt-1 space-y-2">${shown.map(p=>html`<li key=${p.name} class="flex gap-3 rounded-2xl border border-line p-3">
+        <span class="h-10 w-10 grid place-items-center rounded-xl shrink-0" style=${{background:CATS[p.cat].soft,color:CATS[p.cat].color}}><${Icon} name=${CATS[p.cat].icon} size=${18}/></span>
+        <div class="min-w-0 flex-1"><div class="text-sm font-bold leading-snug">${p.name}</div><p class="text-xs text-muted mt-0.5 leading-snug">${p.desc}</p><div class="mt-1 text-[11px] font-semibold text-muted tnum">${fmtD(p.dur)} · ${p.cost>0?money(p.cost,cur):'besplatno'} · ${fmtKm(dist(p,ref)*1.3)} od susjedne stanice${p.flags.includes('h')?' · skriveni dragulj':''}</div></div>
+        <button class=${btn+' self-center bg-brand text-onbrand border-brand hover:bg-brand hover:opacity-90'} onClick=${()=>onAdd(toStop(p))}><${Icon} name="plus" size=${14}/>Dodaj</button>
+      </li>`)}</ul>`}
+    </div>`:html`<div class="space-y-3">
+      <div><${Label}>Naziv<//><input class=${input} value=${v.name} onChange=${e=>setV({...v,name:e.target.value})} placeholder="npr. Večera kod prijatelja"/></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><${Label}>Kvart (neobavezno)<//><input class=${input} value=${v.district} onChange=${e=>setV({...v,district:e.target.value})}/></div>
+        <div><${Label}>Trajanje (min)<//><input type="number" min="5" step="5" class=${input+' tnum'} value=${v.duration} onChange=${e=>setV({...v,duration:e.target.value})}/></div>
+      </div>
+      <div class="flex gap-1.5">${[30,45,60,90,120].map(m=>html`<button key=${m} class=${chip(Number(v.duration)===m)+' h-8 text-xs'} onClick=${()=>setV({...v,duration:m})}>${fmtD(m)}</button>`)}</div>
+      <div><${Label}>Procijenjeni trošak (${CURRENCIES[cur].sym})<//><input type="number" min="0" step="any" inputMode="decimal" class=${input+' tnum'} placeholder="0 = besplatno" value=${v.cost} onChange=${e=>setV({...v,cost:e.target.value})}/></div>
+      <div><${Label}>Kategorija<//><div class="flex flex-wrap gap-1.5">${Object.entries(CATS).map(([k,c])=>html`<button key=${k} onClick=${()=>setV({...v,cat:k})} class=${'inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border text-xs font-bold transition '+(v.cat===k?'':'border-line text-muted')} style=${v.cat===k?{background:c.soft,color:c.color,borderColor:c.color}:null}><${Icon} name=${c.icon} size=${13}/>${c.label}</button>`)}</div></div>
+      <div><${Label}>Bilješka<//><textarea rows="2" class=${input+' h-auto py-2.5 resize-none'} value=${v.note} onChange=${e=>setV({...v,note:e.target.value})}></textarea></div>
+      <button class=${btnPrimary+' w-full'} disabled=${!v.name.trim()} onClick=${addCustom}><${Icon} name="plus" size=${16}/>Dodaj u plan</button>
+    </div>`}
+  <//>`;
+}
+
+function ExportSheet({st,onClose}){
+  const text=useMemo(()=>buildExport(st),[st]);const [copied,setCopied]=useState(false);
+  const copy=async()=>{let ok=false;try{await navigator.clipboard.writeText(text);ok=true;}catch(e){try{const t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();ok=document.execCommand('copy');t.remove();}catch(_){}}setCopied(ok?'ok':'fail');setTimeout(()=>setCopied(false),2200);};
+  const share=async()=>{try{await navigator.share({title:'Plan izleta – '+displayName(st.trip.destination),text});}catch(e){}};
+  const enc=encodeURIComponent(text);
+  return html`<${Sheet} title="Izvezi i podijeli plan" subtitle="Tekst je oblikovan za WhatsApp, e-poštu ili ispis." onClose=${onClose}
+    footer=${html`<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <button class=${btn+' h-10'} onClick=${copy}><${Icon} name=${copied==='ok'?'check':'copy'} size=${15}/>${copied==='ok'?'Kopirano':copied==='fail'?'Označi ručno':'Kopiraj'}</button>
+      <a class=${btn+' h-10'} href=${'https://wa.me/?text='+enc} target="_blank" rel="noopener"><${Icon} name="message" size=${15}/>WhatsApp</a>
+      <a class=${btn+' h-10'} href=${'mailto:?subject='+encodeURIComponent('Plan izleta – '+displayName(st.trip.destination))+'&body='+enc}><${Icon} name="mail" size=${15}/>E-pošta</a>
+      ${typeof navigator!=='undefined'&&navigator.share?html`<button class=${btn+' h-10'} onClick=${share}><${Icon} name="share" size=${15}/>Podijeli</button>`:html`<button class=${btn+' h-10'} onClick=${()=>{try{window.print();}catch(e){}}}><${Icon} name="printer" size=${15}/>Ispiši</button>`}
+    </div>`}>
+    <pre class="whitespace-pre-wrap rounded-2xl bg-soft p-4 text-[12.5px] leading-relaxed font-sans select-all">${text}</pre>
+  <//>`;
+}
+
+function Switch({on,onChange,label}){return html`<button type="button" role="switch" aria-checked=${on} aria-label=${label} onClick=${()=>onChange(!on)} class=${'relative h-7 w-12 shrink-0 rounded-full transition '+(on?'bg-brand':'bg-line')}><span class="absolute top-1 h-5 w-5 rounded-full bg-card shadow transition-all" style=${{left:on?'24px':'4px'}}></span></button>`;}
+function SettingsSheet({cfg,setCfg,aiOk,live,setLive,onClose,cityCount,onClearCities}){
+  const [v,setV]=useState(cfg);const [saved,setSaved]=useState(false);
+  const saveIt=()=>{setCfg({...v,key:v.key.trim(),model:v.model.trim()});setSaved(true);setTimeout(()=>setSaved(false),1800);};
+  return html`<${Sheet} title="Postavke" onClose=${onClose}>
+    <div class="space-y-5">
+      <section class="rounded-2xl border border-line p-4">
+        <div class="flex items-start justify-between gap-3"><div><div class="font-bold text-sm">Pretraga uživo (OpenStreetMap)</div><p class="text-xs text-muted mt-0.5 leading-snug">Stvarne lokacije s adresama i GPS-om za bilo koji grad. Bez interneta koristi se ugrađena baza.</p></div><${Switch} on=${live} onChange=${setLive} label="Pretraga uživo"/></div>
+      </section>
+      <section class="rounded-2xl border border-line p-4">
+        <div class="font-bold text-sm">AI model za asistenta</div>
+        <p class="text-xs text-muted mt-0.5 leading-snug">Uobičajene naredbe (kiša, restoran, odgoda, prorjeđivanje, troškovi, način putovanja) izvršava ugrađeni pomoćnik bez interneta. AI model koristi se samo za složenije zahtjeve.</p>
+        ${aiOk?html`<div class="mt-3 flex gap-2 rounded-xl bg-brandsoft text-brand px-3 py-2.5 text-xs font-semibold"><${Icon} name="sparkles" size=${15}/>Unutar Claudea asistent koristi tvoj Claude račun – API ključ ne treba.</div>`:html`<div class="mt-3 space-y-3">
+          <div class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-soft">${[['none','Isključeno'],['anthropic','Anthropic'],['openai','OpenAI']].map(([k,l])=>html`<button key=${k} type="button" class=${'h-9 rounded-lg text-xs font-bold transition '+(v.provider===k?'bg-card text-brand shadow-card':'text-muted')} onClick=${()=>setV({...v,provider:k,model:v.provider===k?v.model:''})}>${l}</button>`)}</div>
+          ${v.provider!=='none'&&html`<div class="space-y-3">
+            <div><${Label}>API ključ<//><input type="password" autoComplete="off" class=${input} placeholder=${v.provider==='anthropic'?'sk-ant-…':'sk-…'} value=${v.key} onChange=${e=>setV({...v,key:e.target.value})}/></div>
+            <div><${Label}>Model<//><input class=${input} placeholder=${DEFAULT_MODEL[v.provider]} value=${v.model} onChange=${e=>setV({...v,model:e.target.value})}/></div>
+            <p class="text-[11px] text-muted leading-snug">Ključ se sprema samo u ovom pregledniku na ovom uređaju i šalje se izravno ${v.provider==='anthropic'?'Anthropicu':'OpenAI-ju'}. Svaki zahtjev naplaćuje se na tvoj račun kod pružatelja. Ne unosi ključ na tuđem ili dijeljenom uređaju.</p>
+          </div>`}
+          <div class="flex gap-2"><button class=${btnPrimary+' flex-1 h-10'} onClick=${saveIt}>${saved?'Spremljeno':'Spremi'}</button>${cfg.key&&html`<button class=${btnGhost+' h-10'} onClick=${()=>{const n={provider:'none',key:'',model:''};setV(n);setCfg(n);}}>Ukloni ključ</button>`}</div>
+        </div>`}
+      </section>
+      <section class="rounded-2xl border border-line p-4 flex items-center justify-between gap-3">
+        <div><div class="font-bold text-sm">Spremljeni gradovi</div><p class="text-xs text-muted mt-0.5">${cityCount} gradova dohvaćenih s interneta spremljeno je na uređaju.</p></div>
+        <button class=${btn+' h-9'} disabled=${!cityCount} onClick=${onClearCities}><${Icon} name="trash" size=${14}/>Obriši</button>
+      </section>
+    </div>
+  <//>`;
+}
+function CopilotSheet({log,busy,onRun,onClose,onUndo,engine}){
+  const [txt,setTxt]=useState('');const [listening,setListening]=useState(false);const endRef=React.useRef(null);
+  const SR=typeof window!=='undefined'&&(window.SpeechRecognition||window.webkitSpeechRecognition);
+  useEffect(()=>{if(endRef.current&&endRef.current.scrollIntoView)endRef.current.scrollIntoView({block:'end'});},[log.length,busy]);
+  const send=v=>{const x=String(v!=null?v:txt).trim();if(!x||busy)return;setTxt('');onRun(x);};
+  const mic=()=>{if(!SR||listening)return;try{const r=new SR();r.lang='hr-HR';r.interimResults=true;r.onresult=e=>{let x='';for(const res of e.results)x+=res[0].transcript;setTxt(x);};r.onend=()=>setListening(false);r.onerror=()=>setListening(false);setListening(true);r.start();}catch(e){setListening(false);}};
+  return html`<${Sheet} title="AI asistent" subtitle=${engine} onClose=${onClose}
+    footer=${html`<div class="flex items-end gap-2">
+      <textarea rows="1" class=${input+' h-auto min-h-[44px] max-h-32 py-2.5 resize-none'} placeholder="npr. Odgodi sve za 1 sat i ubaci kavu oko 16:00" value=${txt} onChange=${e=>setTxt(e.target.value)} onKeyDown=${e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}></textarea>
+      ${SR&&html`<button class=${'h-11 w-11 shrink-0 grid place-items-center rounded-xl border transition '+(listening?'border-danger text-danger bg-dangersoft':'border-line text-muted hover:text-ink')} onClick=${mic} aria-label="Diktiraj naredbu"><${Icon} name="mic" size=${18}/></button>`}
+      <button class="h-11 w-11 shrink-0 grid place-items-center rounded-xl bg-brand text-onbrand disabled:opacity-40" disabled=${busy||!txt.trim()} onClick=${()=>send()} aria-label="Pošalji"><${Icon} name="send" size=${18}/></button>
+    </div>`}>
+    <div class="flex flex-wrap gap-2">${QUICK_CMDS.map(q=>html`<button key=${q} disabled=${busy} class="text-left rounded-2xl border border-line bg-card px-3 py-2 text-[13px] font-semibold hover:bg-soft disabled:opacity-50" onClick=${()=>send(q)}>${q}</button>`)}</div>
+    <div class="mt-4 space-y-2.5">
+      ${!log.length&&html`<p class="text-sm text-muted leading-relaxed">Napiši što želiš promijeniti, npr. „Dodaj još jedan muzej”, „Prebaci sve na pješačenje”, „Makni Koloseum” ili „Završi do 18:00”. Izmjene se odmah primjenjuju na aktivni dan.</p>`}
+      ${log.map((m,i)=>html`<div key=${i} class=${'flex '+(m.role==='user'?'justify-end':'justify-start')}>
+        <div class=${'max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-snug '+(m.role==='user'?'bg-brand text-onbrand rounded-br-md':'bg-soft rounded-bl-md')}>${m.text}
+          ${m.changed&&i===log.length-1&&html`<button class="mt-1.5 block text-xs font-bold text-brand" onClick=${onUndo}>Poništi ovu izmjenu</button>`}</div></div>`)}
+      ${busy&&html`<div class="flex justify-start"><div class="rounded-2xl bg-soft px-3.5 py-2.5 text-sm text-muted">Radim na tome…</div></div>`}
+      <div ref=${endRef}></div>
+    </div>
+  <//>`;
+}
+
+/* ---------- Aplikacija ---------- */
+function App(){
+  const saved=useMemo(load,[]);
+  const H=useHistory(saved&&saved.plan&&saved.plan.trip?saved.plan:EMPTY);const st=H.state;
+  const [check,setCheck]=useState(saved&&saved.check?saved.check:{done:{},custom:[]});
+  const [widgets,setWidgets]=useState(()=>{const w=saved&&saved.widgets;if(!Array.isArray(w))return DEFAULT_WIDGETS;const ok=w.filter(x=>x&&WIDGET_META[x.id]);DEFAULT_WIDGETS.forEach(dw=>{if(!ok.some(x=>x.id===dw.id))ok.splice(dw.id==='budget'?1:ok.length,0,dw);});return ok;});
+  const [collapsed,setCollapsed]=useState({});const [day,setDay]=useState(0);const [sel,setSel]=useState(null);const [editing,setEditing]=useState(null);
+  const [setupOpen,setSetupOpen]=useState(false);const [tab,setTab]=useState('plan');const [addAt,setAddAt]=useState(null);const [exportOpen,setExportOpen]=useState(false);
+  const [customize,setCustomize]=useState(false);const [toast,setToast]=useState(null);const [dragState,setDragState]=useState({from:null,over:null});
+
+  useEffect(()=>{save({plan:st,check,widgets});},[st,check,widgets]);
+  const [aiOk,setAiOk]=useState(false);const [aiBusy,setAiBusy]=useState(null);
+  const [apiCfg,setApiCfg]=useState(loadApi);useEffect(()=>{saveApi(apiCfg);},[apiCfg]);
+  const [live,setLiveS]=useState(LIVE.on);const setLive=v=>{LIVE.on=v;setLiveS(v);try{localStorage.setItem('planer-live',v?'1':'0');}catch(e){}};
+  const [copilot,setCopilot]=useState(false);const [cpLog,setCpLog]=useState([]);const [cpBusy,setCpBusy]=useState(false);const [settingsOpen,setSettingsOpen]=useState(false);const [cityCount,setCityCount]=useState(()=>new Set(Object.values(AI).map(c=>c.name)).size);
+  useEffect(()=>{let live=true;getSample().then(s=>{if(live)setAiOk(!!s);});return()=>{live=false;};},[]);
+  useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(null),4500);return()=>clearTimeout(t);},[toast]);
+  useEffect(()=>{const k=e=>{const tag=(e.target&&e.target.tagName)||'';if(/INPUT|TEXTAREA|SELECT/.test(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?H.redo():H.undo();}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();H.redo();}};window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k);},[]);
+
+  const d=clamp(day,0,Math.max(0,st.days.length-1));const stops=st.days[d]||[];
+  const sched=useMemo(()=>schedule(stops,st.trip),[stops,st.trip]);
+  const notify=(msg,undo=true)=>setToast({msg,undo,id:uid()});
+  const upd=fn=>H.commit(s=>({...s,days:s.days.map((a,i)=>i===d?fn(a):a)}));
+  const find=id=>stops.find(s=>s.id===id);
+  const scrollTo=id=>setTimeout(()=>{const el=document.getElementById('card-'+id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},80);
+
+  const startGenerate=async(trip,fresh)=>{
+    if(!findCity(trip.destination)&&(LIVE.on||aiOk)){
+      const ctl=new AbortController();let found=null,err=null;
+      if(LIVE.on&&!isOffline()){setAiBusy({dest:trip.destination,ctl,msg:'Pretražujem OpenStreetMap: znamenitosti, muzeje, restorane, kafiće i parkove.'});try{found=await fetchOsmCity(trip.destination);}catch(e){err=e;}}
+      if(!found&&aiOk&&!ctl.signal.aborted){setAiBusy({dest:trip.destination,ctl,msg:'Claude slaže znamenitosti, restorane i lokalne savjete. Ovo traje do minute.'});try{found=await fetchAiCity(trip.destination,ctl.signal);}catch(e){err=e;}}
+      setAiBusy(null);
+      if(ctl.signal.aborted)found=null;
+      if(found){trip={...trip,destination:found.name};setTimeout(()=>notify(found.osm?'Pronađeno '+found.places.length+' stvarnih lokacija na OpenStreetMapu.':'Pronađene su stvarne lokacije za '+found.name+'.',false),50);}
+      else if(aiOk&&err&&!ctl.signal.aborted)setTimeout(()=>notify(aiErrText(err),false),50);
+    }
+    generate(trip,fresh);
+  };
+  const generate=(trip,fresh)=>{H.commit(s=>({...s,trip,days:generatePlan(trip,fresh?Date.now():hash(norm(trip.destination)+trip.focus.join()+trip.mode)),later:[],generated:true}));setDay(0);setSel(null);setEditing(null);setSetupOpen(false);setTab('plan');try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){}};
+  const act={
+    select:id=>setSel(id),
+    drag:v=>setDragState(v),
+    delay:(id,m)=>{upd(a=>a.map(s=>s.id===id?{...s,delay:(s.delay||0)+m}:s));notify(find(id).name+' – odgođeno za '+fmtD(m)+', sljedeće lokacije su pomaknute.');},
+    clearDelay:id=>upd(a=>a.map(s=>s.id===id?{...s,delay:0}:s)),
+    adjust:(id,m)=>upd(a=>a.map(s=>s.id===id?{...s,duration:clamp(s.duration+m,5,600)}:s)),
+    move:(from,to)=>{if(to<0||to>=stops.length||from===to)return;upd(a=>{const b=a.slice();const [x]=b.splice(from,1);b.splice(to,0,x);return b;});},
+    alt:id=>{const s=find(id);const n=nextAlternative(s,st);if(!n)return notify('Za ovu kategoriju nema više alternativa.',false);upd(a=>a.map(x=>x.id===id?n:x));notify('Zamijenjeno: '+n.name);},
+    later:id=>{const s=find(id);H.commit(o=>({...o,days:o.days.map((a,i)=>i===d?a.filter(x=>x.id!==id):a),later:[...o.later,{...s,delay:0}]}));notify(s.name+' – premješteno u Za kasnije.');},
+    dup:id=>{upd(a=>{const i=a.findIndex(x=>x.id===id);const b=a.slice();b.splice(i+1,0,{...a[i],id:uid(),delay:0});return b;});notify('Lokacija je duplicirana.');},
+    remove:id=>{const s=find(id);upd(a=>a.filter(x=>x.id!==id));if(editing===id)setEditing(null);notify(s.name+' – uklonjeno iz plana.');},
+    nextDay:id=>{const s=find(id);H.commit(o=>({...o,days:o.days.map((a,i)=>i===d?a.filter(x=>x.id!==id):i===d+1?[...a,{...s,delay:0}]:a)}));notify(s.name+' – prebačeno na '+(d+2)+'. dan.');},
+    edit:id=>{setEditing(id);setSel(id);},
+    cancelEdit:()=>setEditing(null),
+    save:(id,p)=>{upd(a=>a.map(s=>s.id===id?{...s,...p}:s));setEditing(null);},
+  };
+  const restore=id=>{const s=st.later.find(x=>x.id===id);if(!st.days.length)return;H.commit(o=>({...o,later:o.later.filter(x=>x.id!==id),days:o.days.map((a,i)=>i===d?[...a,s]:a)}));setTab('plan');setSel(id);scrollTo(id);notify(s.name+' – vraćeno u plan.');};
+  const dropLater=id=>{H.commit(o=>({...o,later:o.later.filter(x=>x.id!==id)}));notify('Trajno uklonjeno.');};
+  const insert=stop=>{const i=addAt==null?stops.length:addAt;upd(a=>{const b=a.slice();b.splice(i,0,stop);return b;});setAddAt(null);setSel(stop.id);scrollTo(stop.id);notify(stop.name+' – dodano u plan.');};
+  const selectFromSide=id=>{setSel(id);setTab('plan');scrollTo(id);};
+  const remoteOk=aiOk||(apiCfg.provider!=='none'&&!!apiCfg.key);
+  const engineLabel=aiOk?'Ugrađeni pomoćnik + Claude':remoteOk?'Ugrađeni pomoćnik + '+(apiCfg.provider==='anthropic'?'Anthropic':'OpenAI'):'Ugrađeni pomoćnik – radi i bez interneta';
+  const runCopilot=async text=>{
+    setCpLog(l=>[...l,{role:'user',text}]);setCpBusy(true);const say=(t,changed)=>setCpLog(l=>[...l.map(m=>({...m,changed:false})),{role:'bot',text:t,changed:!!changed}]);
+    try{
+      const r=await localEngine(text,st,d);
+      if(r&&r.undo){H.undo();say(r.reply);return;}
+      if(r){H.commit(()=>r.state);setEditing(null);say(r.reply||'Plan je ažuriran.',true);return;}
+      if(remoteOk){const prompt=buildRemotePrompt(text,st,d);const res=aiOk?await (await getSample()).json(prompt,{modelTier:'default'}):parseJsonText(await callByok(apiCfg,prompt));
+        const ns=applyRemote(res,st,d);H.commit(()=>ns);setEditing(null);say(str(res.reply,600)||'Plan je ažuriran.',true);return;}
+      say('Nisam siguran što trebam napraviti. Probaj npr. „Dodaj još jedan muzej”, „Odgodi sve za 1 sat”, „Makni zadnju lokaciju” ili „Prebaci sve na pješačenje”. Za slobodnije zahtjeve u Postavkama možeš dodati vlastiti API ključ.');
+    }catch(e){say('Izmjena nije uspjela ('+((e&&e.code==='not_granted')?'pristup Claudeu nije odobren':(e&&(e.message||e.code))||'nepoznata greška')+'). Plan je ostao nepromijenjen.');}
+    finally{setCpBusy(false);}
+  };
+  const clearCities=()=>{Object.keys(AI).forEach(k=>delete AI[k]);saveAI();Object.keys(GEO).forEach(k=>delete GEO[k]);try{localStorage.removeItem(GEO_KEY);}catch(e){}poolCache.clear();setCityCount(0);notify('Spremljeni gradovi su obrisani.',false);};
+  const dayLabel=st.days.length>1?(d+1)+'. dan':'plan';
+  const tripEnd=st.trip.end;
+  const cur=st.trip.currency||'EUR';
+  const setCurrency=k=>H.commit(s=>({...s,trip:{...s.trip,currency:k}}));
+
+  const widgetBody=id=>{
+    if(id==='budget')return html`<${BudgetWidget} st=${st} cur=${cur} onBudget=${b=>H.commit(s=>({...s,trip:{...s.trip,budget:b}}))}/>`;
+    if(id==='summary')return html`<${SummaryWidget} sched=${sched} trip=${st.trip} sel=${sel} onSelect=${selectFromSide}/>`;
+    if(id==='route')return html`<${RouteWidget} sched=${sched} sel=${sel} onSelect=${selectFromSide} trip=${st.trip}/>`;
+    if(id==='later')return html`<${LaterWidget} later=${st.later} onRestore=${restore} onDrop=${dropLater} dayLabel=${dayLabel}/>`;
+    return html`<${ContextWidget} trip=${st.trip} check=${check} setCheck=${setCheck}/>`;
+  };
+  const overCount=sched.filter(s=>s.over).length;
+
+  return html`<div class="min-h-screen bg-bg text-ink">
+    <header class="sticky z-30 border-b border-line bg-card" style=${{top:'env(safe-area-inset-top,0px)'}}>
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-2">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <span class="h-8 w-8 grid place-items-center rounded-lg bg-brand text-onbrand shrink-0"><${Icon} name="map" size=${17}/></span>
+          <span class="font-extrabold tracking-tight truncate">Planer izleta</span>
+        </div>
+        <button class=${btn+' h-9 w-9 px-0'} onClick=${()=>setSettingsOpen(true)} aria-label="Postavke" title="Postavke"><${Icon} name="gear" size=${16}/></button>
+        ${st.generated&&html`<label class="relative"><span class="sr-only">Valuta</span><select class=${btn+' h-9 pl-2.5 pr-6 appearance-none cursor-pointer'} value=${cur} onChange=${e=>setCurrency(e.target.value)}>${CUR_KEYS.map(k=>html`<option key=${k} value=${k}>${CURRENCIES[k].label}</option>`)}</select><span class="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-muted"><${Icon} name="chevDown" size=${12}/></span></label>`}
+        <button class=${btn+' h-9'} onClick=${H.undo} disabled=${!H.canUndo} title="Poništi (Ctrl+Z)"><${Icon} name="undo" size=${15}/><span class="hidden sm:inline">Poništi</span></button>
+        <button class=${btn+' h-9'} onClick=${H.redo} disabled=${!H.canRedo} title="Ponovi (Ctrl+Shift+Z)"><${Icon} name="redo" size=${15}/><span class="hidden sm:inline">Ponovi</span></button>
+        ${st.generated&&html`<button class=${btn+' h-9 bg-brand text-onbrand border-brand hover:bg-brand hover:opacity-90'} onClick=${()=>setExportOpen(true)}><${Icon} name="share" size=${15}/><span class="hidden sm:inline">Izvezi / podijeli</span></button>`}
+      </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 pb-28">
+      ${(!st.generated||setupOpen)&&html`<${SetupPanel} key=${'setup'+(setupOpen?1:0)} initial=${st.trip} hasPlan=${st.generated} onCancel=${()=>setSetupOpen(false)} aiOk=${aiOk} onGenerate=${t=>startGenerate(t,false)}/>`}
+      ${st.generated&&!setupOpen&&html`<${TripBar} st=${st} onAi=${(aiOk||live)&&!findCity(st.trip.destination)?()=>startGenerate(st.trip,false):null} onEdit=${()=>setSetupOpen(true)} onRegenerate=${()=>{generate(st.trip,true);notify('Složen je novi prijedlog plana.');}} onMode=${m=>H.commit(s=>({...s,trip:{...s.trip,mode:m}}))}/>`}
+
+      ${st.generated&&html`<div>
+        <div class="lg:hidden mt-4 grid grid-cols-2 gap-1 p-1 rounded-xl bg-soft">
+          ${[['plan','Plan'],['overview','Karta i pregled']].map(([k,l])=>html`<button key=${k} class=${'h-10 rounded-lg text-sm font-bold transition '+(tab===k?'bg-card shadow-card':'text-muted')} onClick=${()=>setTab(k)}>${l}${k==='overview'&&st.later.length>0?html`<span class="ml-1.5 inline-grid place-items-center h-5 min-w-[20px] px-1 rounded-full bg-brandsoft text-brand text-[11px]">${st.later.length}</span>`:''}</button>`)}
+        </div>
+        <div class="mt-5 grid gap-6 lg:grid-cols-[minmax(0,65fr)_minmax(0,35fr)] items-start">
+          <section class=${tab==='plan'?'block':'hidden lg:block'} aria-label="Raspored">
+            ${st.days.length>1&&html`<div class="-mx-1 px-1 mb-4 flex gap-2 overflow-x-auto pb-1">
+              ${st.days.map((a,i)=>html`<button key=${i} onClick=${()=>{setDay(i);setSel(null);setEditing(null);}} class=${'shrink-0 rounded-xl border px-3.5 py-2 text-left transition '+(i===d?'border-brand bg-brandsoft':'border-line bg-card hover:bg-soft')}>
+                <div class=${'text-sm font-extrabold '+(i===d?'text-brand':'')}>Dan ${i+1}</div><div class="text-[11px] font-semibold text-muted tnum">${fmtShort(addDays(st.trip.date,i))} · ${a.length} lok.</div>
+              </button>`)}
+            </div>`}
+            ${overCount>0&&html`<div class="mb-4 flex items-start gap-2.5 rounded-2xl border border-line bg-dangersoft px-4 py-3 text-sm text-danger"><span class="mt-0.5"><${Icon} name="alert" size=${17}/></span><span><b>Raspored prelazi planirani kraj u ${tripEnd}.</b> Skrati trajanje, ukloni lokaciju ili je premjesti u Za kasnije.</span></div>`}
+            ${sched.length===0?html`<div class="rounded-2xl border border-dashed border-line bg-card px-6 py-10 text-center">
+              <div class="mx-auto h-12 w-12 grid place-items-center rounded-2xl bg-soft text-muted"><${Icon} name="pin" size=${22}/></div>
+              <p class="mt-3 font-bold">Ovaj dan još nema lokacija</p><p class="mt-1 text-sm text-muted">Dodaj prijedlog ili vlastitu lokaciju, ili vrati nešto iz popisa Za kasnije.</p>
+            </div>`:sched.map((s,i)=>html`<${React.Fragment} key=${s.id}>
+              ${i>0&&html`<${Connector} travel=${s.travel} cur=${cur} onAdd=${()=>setAddAt(i)}/>`}
+              <${StopCard} s=${s} i=${i} count=${sched.length} dayCount=${st.days.length} day=${d} sel=${sel===s.id} editing=${editing===s.id} dragState=${dragState} act=${act} tripEnd=${tripEnd} cur=${cur} dest=${displayName(st.trip.destination)}/>
+            <//>`)}
+            <button class="mt-4 w-full h-14 rounded-2xl border-2 border-dashed border-line text-sm font-bold text-muted hover:text-brand hover:border-brand transition flex items-center justify-center gap-2" onClick=${()=>setAddAt(stops.length)}><${Icon} name="plus" size=${18}/>Dodaj lokaciju</button>
+          </section>
+
+          <aside class=${(tab==='overview'?'block':'hidden lg:block')+' space-y-4 lg:sticky lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pb-2'} style=${{top:'calc(env(safe-area-inset-top,0px) + 72px)'}} aria-label="Pregled">
+            <div class="flex items-center justify-between"><span class="text-sm font-bold text-muted">Pregled${st.days.length>1?' – '+(d+1)+'. dan':''}</span><button class=${btn} onClick=${()=>setCustomize(c=>!c)}><${Icon} name="sliders" size=${14}/>Prilagodi</button></div>
+            ${customize&&html`<${CustomizePanel} widgets=${widgets} setWidgets=${setWidgets} onClose=${()=>setCustomize(false)}/>`}
+            ${widgets.filter(w=>w.on).map(w=>html`<${Widget} key=${w.id} id=${w.id} badge=${w.id==='later'?(st.later.length||''):null} collapsed=${!!collapsed[w.id]} onToggle=${()=>setCollapsed(c=>({...c,[w.id]:!c[w.id]}))}>${widgetBody(w.id)}<//>`)}
+            ${widgets.every(w=>!w.on)&&html`<p class="text-sm text-muted">Svi su moduli skriveni. Uključi ih preko gumba Prilagodi.</p>`}
+          </aside>
+        </div>
+      </div>`}
+    </main>
+
+    ${addAt!=null&&html`<${AddSheet} st=${st} day=${d} index=${addAt} onAdd=${insert} onClose=${()=>setAddAt(null)}/>`}
+    ${aiBusy&&html`<div class="fixed inset-0 z-[70] grid place-items-center bg-slate-900/45 px-6" role="status" aria-live="polite">
+      <div class="pop w-full max-w-sm rounded-3xl border border-line bg-card p-6 text-center shadow-2xl">
+        <div class="mx-auto h-12 w-12 rounded-full border-4 border-line animate-spin" style=${{borderTopColor:'var(--brand)'}}></div>
+        <p class="mt-4 font-bold">Tražim stvarne lokacije: ${aiBusy.dest}</p>
+        <p class="mt-1 text-sm text-muted">${aiBusy.msg}</p>
+        <button class=${btnGhost+' mt-5 w-full'} onClick=${()=>aiBusy.ctl.abort()}>Preskoči i složi okvirni plan</button>
+      </div>
+    </div>`}
+    ${exportOpen&&html`<${ExportSheet} st=${st} onClose=${()=>setExportOpen(false)}/>`}
+    ${st.generated&&!copilot&&html`<button class="fixed z-40 right-4 inline-flex items-center gap-2 h-12 pl-4 pr-5 rounded-full bg-brand text-onbrand text-sm font-bold shadow-2xl active:scale-[.97] transition" style=${{bottom:'calc(env(safe-area-inset-bottom,0px) + 18px)'}} onClick=${()=>setCopilot(true)}><${Icon} name="sparkles" size=${18}/>AI asistent</button>`}
+    ${copilot&&html`<${CopilotSheet} log=${cpLog} busy=${cpBusy} onRun=${runCopilot} onClose=${()=>setCopilot(false)} onUndo=${()=>{H.undo();setCpLog(l=>[...l.map(m=>({...m,changed:false})),{role:'bot',text:'Poništio sam zadnju izmjenu.'}]);}} engine=${engineLabel+(st.days.length>1?' · '+(d+1)+'. dan':'')}/>`}
+    ${settingsOpen&&html`<${SettingsSheet} cfg=${apiCfg} setCfg=${setApiCfg} aiOk=${aiOk} live=${live} setLive=${setLive} cityCount=${cityCount} onClearCities=${clearCities} onClose=${()=>setSettingsOpen(false)}/>`}
+    ${toast&&html`<div class="fixed inset-x-0 bottom-0 z-[60] flex justify-center px-4 pointer-events-none" style=${{paddingBottom:'calc(env(safe-area-inset-bottom,0px) + '+(st.generated?84:16)+'px)'}}>
+      <div key=${toast.id} class="pop pointer-events-auto flex items-center gap-3 max-w-md rounded-2xl bg-ink text-card pl-4 pr-2 py-2 shadow-2xl text-sm font-semibold">
+        <span class="py-1">${toast.msg}</span>
+        ${toast.undo&&html`<button class="shrink-0 h-8 px-3 rounded-xl font-bold hover:opacity-80" style=${{background:'var(--card)',color:'var(--ink)'}} onClick=${()=>{H.undo();setToast(null);}}>Poništi</button>`}
+      </div>
+    </div>`}
+    ${st.generated&&html`<div id="print-area">${buildExport(st)}</div>`}
+  </div>`;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App}/>`);
+})();
+</script>
+</body>
+</html>
